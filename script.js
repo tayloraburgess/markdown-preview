@@ -30,23 +30,69 @@ var generatePreview = (file) => {
 			var htmlText= "";
 
 			var boldCount = 0;
-			for (i = 0; i < fileText.length; i++) {
-				if (fileText.charAt(i) ==  "*" | fileText.charAt(i) ==  "_") {
+			var strongCount = 0;
 
-					if (boldCount) {
-						htmlText+= "</em>";
-						boldCount = 0;
+			for (i = 0; i < fileText.length; i++) {
+
+				var thisChar = fileText.charAt(i);
+
+				if (thisChar != "\\") {
+
+					if (thisChar ==  "*" | thisChar == "_") {
+
+						if (fileText.charAt(i - 1) != thisChar && fileText.charAt(i + 1) != thisChar) {
+
+							if (boldCount) {
+								htmlText+= "</em>";
+								boldCount = 0;
+							}
+							else {
+								htmlText += "<em>";
+								boldCount = 1;
+							}
+						}
+						else if (fileText.charAt(i - 1) == thisChar) {
+
+							if (fileText.charAt(i - 2) == thisChar) {
+
+								if (strongCount && boldCount) {
+									htmlText+= "</strong></em>";
+									strongCount = 0;
+									boldCount = 0;
+								}
+								else {
+									htmlText += "<strong><em>";
+									strongCount = 1;
+									boldCount = 1;
+								}
+
+							}
+
+							else if (fileText.charAt(i + 1) != thisChar) {
+
+								if (strongCount) {
+									htmlText+= "</strong>";
+									strongCount = 0;
+								}
+								else {
+									htmlText += "<strong>";
+									strongCount = 1;
+								}
+							}
+						}
 					}
-					else {
-						htmlText += "<em>";
-						boldCount = 1;
-					}
+
+					else if (fileText.charAt(i) == "\n") htmlText += "<br>";
+
+					else htmlText += fileText.charAt(i);
 
 				}
 
-				else if (fileText.charAt(i) == "\n") htmlText += "<br>";
+				else {
+					i++;
+					htmlText += fileText.charAt(i);
 
-				else htmlText += fileText.charAt(i);
+				}
 
 			}
 
