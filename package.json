@@ -1,0 +1,17 @@
+{
+  "name": "markdown-preview",
+  "version": "1.0.0",
+  "description": "Bash tool to quickly generate an HTML preview of a markdown file.",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "mdpreview": "script.js"
+  },
+  "dependencies": {
+    "commander": "^2.9.0"
+  },
+  "author": "Taylor Burgess",
+  "license": "ISC"
+}
