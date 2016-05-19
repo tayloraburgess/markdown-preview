@@ -6,6 +6,7 @@ var program = require("commander");
 
 var boldCount = 0;
 var strongCount = 0;
+var headerCount = 0;
 
 String.prototype.insert = function(startIndex, endIndex, subString) {
 	var beforeString = this.slice(0, startIndex);
@@ -17,6 +18,19 @@ String.prototype.replaceChar = function(replaceIndex, replaceCharacter) {
 	var beforeString = this.slice(0, replaceIndex);
 	var afterString = this.slice(replaceIndex + 1, this.length);
 	return beforeString + replaceCharacter + afterString;
+}
+
+function newLine (inputText, charIndex) {
+
+	var htmlReturn = "";
+
+	if (headerCount > 0) {
+		htmlReturn += "</h" + headerCount + ">";
+		headerCount = 0;
+	}
+	
+	else htmlReturn += "<br>";
+	return htmlReturn;
 }
 
 function emphasis (inputText, checkChar, charIndex) {
@@ -67,6 +81,38 @@ function emphasis (inputText, checkChar, charIndex) {
 	return returnHtml;
 }
 
+function header (inputText, charIndex) {
+
+	var whichHeader = 0;
+	for (j = 1; j < 7; j++) {
+		if (inputText.charAt(charIndex - j) == "\n" || (charIndex - j) < 0) { 
+			whichHeader = j;
+			break;
+		}
+	}
+
+	var maxHeader = 0;
+	if (inputText.charAt(charIndex + 6 - (whichHeader - 1)) == "#") maxHeader = 1;
+
+	var otherHashes = 0;
+	if (whichHeader != 0) {
+
+		for (j = whichHeader - 1; j > 0; j--) {
+			if (inputText.charAt(charIndex - j) != "#") otherHashes = 1;
+		}
+	}
+
+	if (whichHeader > 0 && otherHashes == 0 && maxHeader == 0) {
+		if (inputText.charAt(charIndex + 1) != "#") {
+
+				headerCount = whichHeader;
+				return "<h" + whichHeader + ">";
+		}
+		else return "";
+	}
+	else return "#";
+}
+
 var generatePreview = (file) => {
 
 	var server = http.createServer( (request, response) => {
@@ -84,8 +130,9 @@ var generatePreview = (file) => {
 
 				if (thisChar != "\\") {
 
-					if (thisChar ==  "*" | thisChar == "_") htmlText += emphasis(fileText, thisChar, i);
-					else if (fileText.charAt(i) == "\n") htmlText += "<br>";
+					if (thisChar == "*" | thisChar == "_") htmlText += emphasis(fileText, thisChar, i);
+					else if (thisChar == "#") htmlText += header(fileText, i);
+					else if (fileText.charAt(i) == "\n") htmlText += newLine(fileText, i);
 					else htmlText += fileText.charAt(i);
 
 				}
