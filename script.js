@@ -4,81 +4,15 @@ var fs = require("fs");
 var http = require("http");
 var program = require("commander");
 
-var boldCount = 0;
-var strongCount = 0;
-var headerCount = 0;
-
-String.prototype.insert = function(startIndex, endIndex, subString) {
-	var beforeString = this.slice(0, startIndex);
-	var afterString = this.slice(endIndex + 1, this.length);
-	return beforeString + subString + afterString;
-}
-
-String.prototype.replaceChar = function(replaceIndex, replaceCharacter) {
-	var beforeString = this.slice(0, replaceIndex);
-	var afterString = this.slice(replaceIndex + 1, this.length);
-	return beforeString + replaceCharacter + afterString;
-}
-
-function newLine (inputText, charIndex) {
-
-	var htmlReturn = "";
-
-	if (headerCount > 0) {
-		htmlReturn += "</h" + headerCount + ">";
-		headerCount = 0;
-	}
-	
-	else htmlReturn += "<br>";
-	return htmlReturn;
-}
-
 function emphasis (inputText, checkChar, charIndex) {
 
-	var returnHtml = "";
 
-	if (inputText.charAt(charIndex - 1) != checkChar && inputText.charAt(charIndex + 1) != checkChar) {
-
-		if (boldCount) {
-			returnHtml+= "</em>";
-			boldCount = 0;
-		}
-
-		else {
-			returnHtml += "<em>";
-			boldCount = 1;
-		}
+	if (inputText.charAt(charIndex - 1) != checkChar && (inputText.charAt(charIndex + 1) != checkChar || inputText.charAt(charIndex + 2) == checkChar)) {
+		return {type: "em"};
 	}
-	else if (inputText.charAt(charIndex - 1) == checkChar) {
-
-		if (inputText.charAt(charIndex - 2) == checkChar) {
-
-			if (strongCount && boldCount) {
-				returnHtml+= "</strong></em>";
-				strongCount = 0;
-				boldCount = 0;
-			}
-
-			else {
-				returnHtml += "<strong><em>";
-				strongCount = 1;
-				boldCount = 1;
-			}
-		}
-		else if (inputText.charAt(charIndex + 1) != checkChar) {
-
-			if (strongCount) {
-				returnHtml+= "</strong>";
-				strongCount = 0;
-			}
-
-			else {
-				returnHtml += "<strong>";
-				strongCount = 1;
-			}
-		}
+	else if (inputText.charAt(charIndex - 1) == checkChar && inputText.charAt(charIndex - 2) != checkChar) {
+			return {type: "strong"};
 	}
-	return returnHtml;
 }
 
 function header (inputText, charIndex) {
@@ -105,24 +39,25 @@ function header (inputText, charIndex) {
 	if (whichHeader > 0 && otherHashes == 0 && maxHeader == 0) {
 		if (inputText.charAt(charIndex + 1) != "#") {
 
-				headerCount = whichHeader;
-				return "<h" + whichHeader + ">";
+				return {type: "h" + whichHeader};
 		}
-		else return "";
 	}
-	else return "#";
+	else return {type: "text", content: "#"};
 }
 
 var generatePreview = (file) => {
 
-	var server = http.createServer( (request, response) => {
+//	var server = http.createServer( (request, response) => {
 
 		fs.readFile(file, (err, data) => {
 
 			if (err) throw err;
 
 			var fileText = data.toString();
-			var htmlText= "";
+			var htmlObjs = [];
+			var lineSplitObjs = [];
+			lineSplitObjs.push([]);
+			//var htmlText = "";
 
 			for (i = 0; i < fileText.length; i++) {
 
@@ -130,27 +65,49 @@ var generatePreview = (file) => {
 
 				if (thisChar != "\\") {
 
-					if (thisChar == "*" | thisChar == "_") htmlText += emphasis(fileText, thisChar, i);
-					else if (thisChar == "#") htmlText += header(fileText, i);
-					else if (fileText.charAt(i) == "\n") htmlText += newLine(fileText, i);
-					else htmlText += fileText.charAt(i);
+					if (thisChar == "*" | thisChar == "_") {
+						var addObj = emphasis(fileText, thisChar, i);
+					}
+					else if (thisChar == "#") {
+						var addObj = header(fileText, i);
+					}
+					else if (fileText.charAt(i) == "\n") var addObj = {type: "newline"};
+					else var addObj = ({type: "text", content: fileText.charAt(i)});
 
 				}
 
 				else {
 
 					i++;
-					htmlText += fileText.charAt(i);
+					var addObj = {type: "text", content: fileText.charAt(i)};
 
+				}
+
+				if (addObj) {
+					if (htmlObjs.length > 0) {
+						if (addObj.type == "text" && htmlObjs[htmlObjs.length - 1].type == "text") {
+							htmlObjs[htmlObjs.length - 1].content += addObj.content;
+						}
+						else htmlObjs.push(addObj);
+					}
+					else htmlObjs.push(addObj);
 				}
 			}
 
-			response.writeHead(200, {'Content-Type': 'text/html'});
-			response.end(htmlText);
+			for (j = 0; j < htmlObjs.length; j++) {
+				if (htmlObjs[j].type == "newline") {
+					lineSplitObjs.push([]);
+				}
+				else lineSplitObjs[lineSplitObjs.length - 1].push(htmlObjs[j]);
+			}
+
+			//response.writeHead(200, {'Content-Type': 'text/html'});
+			//response.end(htmlText);
+			console.log(lineSplitObjs);
 
 		});
 
-	}).listen(8080);
+	//}).listen(8080);
 
 }
 
