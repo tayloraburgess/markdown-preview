@@ -47,7 +47,7 @@ function header (inputText, charIndex) {
 
 var generatePreview = (file) => {
 
-//	var server = http.createServer( (request, response) => {
+	var server = http.createServer( (request, response) => {
 
 		fs.readFile(file, (err, data) => {
 
@@ -57,7 +57,7 @@ var generatePreview = (file) => {
 			var htmlObjs = [];
 			var lineSplitObjs = [];
 			lineSplitObjs.push([]);
-			//var htmlText = "";
+			var htmlText = "";
 
 			for (i = 0; i < fileText.length; i++) {
 
@@ -101,13 +101,18 @@ var generatePreview = (file) => {
 				else lineSplitObjs[lineSplitObjs.length - 1].push(htmlObjs[j]);
 			}
 
-			//response.writeHead(200, {'Content-Type': 'text/html'});
-			//response.end(htmlText);
-			console.log(lineSplitObjs);
+			for (i = 0; i < lineSplitObjs.length; i++) {
+				for (j = 0; j < lineSplitObjs[i].length; j++) {
+					if (lineSplitObjs[i][j].type == "text") htmlText += lineSplitObjs[i][j].content;
+				}
+			}
+			response.writeHead(200, {'Content-Type': 'text/html'});
+			response.end(htmlText);
+			//console.log(lineSplitObjs);
 
 		});
 
-	//}).listen(8080);
+	}).listen(8080);
 
 }
 
