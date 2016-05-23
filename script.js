@@ -101,9 +101,36 @@ var generatePreview = (file) => {
 				else lineSplitObjs[lineSplitObjs.length - 1].push(htmlObjs[j]);
 			}
 
+			var emCount = 0;
+			var strongCount = 0;
+
 			for (i = 0; i < lineSplitObjs.length; i++) {
 				for (j = 0; j < lineSplitObjs[i].length; j++) {
+
 					if (lineSplitObjs[i][j].type == "text") htmlText += lineSplitObjs[i][j].content;
+
+					if (lineSplitObjs[i][j].type == "em") {
+						if (emCount) {
+							htmlText += "</em>";
+							emCount = 0;
+						}
+						else {
+							htmlText += "<em>";
+							emCount = 1;
+						}
+					}
+
+					if (lineSplitObjs[i][j].type == "strong") {
+						if (strongCount) {
+							htmlText += "</strong>";
+							strongCount = 0;
+						}
+						else {
+							htmlText += "<strong>";
+							strongCount = 1;
+						}
+					}
+					
 				}
 			}
 			response.writeHead(200, {'Content-Type': 'text/html'});
