@@ -6,13 +6,14 @@ var program = require("commander");
 
 function emphasis (inputText, checkChar, charIndex) {
 
+	var charBack = inputText.charAt(charIndex - 1);
+	var charFwd = inputText.charAt(charIndex + 1);
+	var charBackBack = inputText.charAt(charIndex - 2);
+	var charFwdFwd = inputText.charAt(charIndex + 2);
 
-	if (inputText.charAt(charIndex - 1) != checkChar && (inputText.charAt(charIndex + 1) != checkChar || inputText.charAt(charIndex + 2) == checkChar)) {
-		return {type: "em"};
-	}
-	else if (inputText.charAt(charIndex - 1) == checkChar && inputText.charAt(charIndex - 2) != checkChar) {
-			return {type: "strong"};
-	}
+	if (charBack != checkChar && charFwd != checkChar || charFwdFwd == checkChar) return {type: "em"};
+	else if (charBack == checkChar && charBackBack != checkChar) return {type: "strong"};
+
 }
 
 function header (inputText, charIndex) {
@@ -57,7 +58,7 @@ var generatePreview = (file) => {
 			var htmlObjs = [];
 			var lineSplitObjs = [];
 			lineSplitObjs.push([]);
-			var htmlText = "";
+			var htmlText = [];
 
 			for (i = 0; i < fileText.length; i++) {
 
@@ -103,38 +104,57 @@ var generatePreview = (file) => {
 
 			var emCount = 0;
 			var strongCount = 0;
+			var currentH = "";
 
 			for (i = 0; i < lineSplitObjs.length; i++) {
+				htmlText.push("");
 				for (j = 0; j < lineSplitObjs[i].length; j++) {
 
-					if (lineSplitObjs[i][j].type == "text") htmlText += lineSplitObjs[i][j].content;
+					if (lineSplitObjs[i][j].type == "text") htmlText[i] += lineSplitObjs[i][j].content;
 
 					if (lineSplitObjs[i][j].type == "em") {
 						if (emCount) {
-							htmlText += "</em>";
+							htmlText[i] += "</em>";
 							emCount = 0;
 						}
 						else {
-							htmlText += "<em>";
+							htmlText[i] += "<em>";
 							emCount = 1;
 						}
 					}
 
 					if (lineSplitObjs[i][j].type == "strong") {
 						if (strongCount) {
-							htmlText += "</strong>";
+							htmlText[i] += "</strong>";
 							strongCount = 0;
 						}
 						else {
-							htmlText += "<strong>";
+							htmlText[i] += "<strong>";
 							strongCount = 1;
 						}
 					}
-					
+
+					if (/h./.test(lineSplitObjs[i][j].type)) {
+						currentH = lineSplitObjs[i][j].type;
+						htmlText[i] += "<" + currentH + ">";
+					}
+
+					if (j == (lineSplitObjs[i].length - 1)) {
+						if (currentH) {
+							htmlText[i] += "</" + currentH + ">";
+							currentH = "";
+						}
+					}
+
 				}
 			}
+
+			var htmlOut = "";
+			for (i = 0; i < htmlText.length; i++) htmlOut += htmlText[i];
+
 			response.writeHead(200, {'Content-Type': 'text/html'});
-			response.end(htmlText);
+			response.end(htmlOut);
+			//console.log(htmlOut);
 			//console.log(lineSplitObjs);
 
 		});
