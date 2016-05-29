@@ -4,7 +4,7 @@ var fs = require("fs");
 var http = require("http");
 var program = require("commander");
 
-function emphasis (inputText, checkChar, charIndex) {
+function emphasis(inputText, checkChar, charIndex) {
 
 	var charBack = inputText.charAt(charIndex - 1);
 	var charFwd = inputText.charAt(charIndex + 1);
@@ -16,7 +16,37 @@ function emphasis (inputText, checkChar, charIndex) {
 
 }
 
-function header (inputText, charIndex) {
+function setextHeader(inputText, checkChar, charIndex) {
+
+	var isHeader = 0;
+
+	for (j = charIndex + 1; j < inputText.length; j++) {
+
+		if (inputText.charAt(j) == "\n") break;
+		else if (inputText.charAt(j) != checkChar) isHeader = 1;
+	}
+
+	for (j = charIndex - 1; j > -1; j--) {
+
+		if (inputText.charAt(j) == "\n") break;
+		else if (inputText.charAt(j) != checkChar) isHeader = 1;
+	}
+
+	if (inputText.charAt(charIndex - 1) == "\n") {
+
+		if (!isHeader) {
+			if (checkChar == "=") return {type: "setext1"};
+			else if (checkChar == "-") return {type: "setext2"};
+		}
+
+		else return {type: "text", content: checkChar};
+	} else {
+		if(isHeader) return {type: "text", content: checkChar};
+	}
+
+}
+
+function atxHeader(inputText, charIndex) {
 
 	var whichHeader = 0;
 	for (j = 1; j < 7; j++) {
@@ -70,7 +100,10 @@ var generatePreview = (file) => {
 						var addObj = emphasis(fileText, thisChar, i);
 					}
 					else if (thisChar == "#") {
-						var addObj = header(fileText, i);
+						var addObj = atxHeader(fileText, i);
+					}
+					else if (thisChar == "-" | thisChar == "=") {
+						var addObj = setextHeader(fileText, thisChar, i);
 					}
 					else if (fileText.charAt(i) == "\n") var addObj = {type: "newline"};
 					else var addObj = ({type: "text", content: fileText.charAt(i)});
@@ -132,6 +165,17 @@ var generatePreview = (file) => {
 							htmlText[i] += "<strong>";
 							strongCount = 1;
 						}
+					}
+
+					if (lineSplitObjs[i][j].type == "setext1") {
+						htmlText[i - 1] = "<h1>" + htmlText[i - 1];
+						htmlText[i - 1] += "</h1>";
+
+					}
+
+					if (lineSplitObjs[i][j].type == "setext2") {
+						htmlText[i - 1] = "<h2>" + htmlText[i - 1];
+						htmlText[i - 1] += "</h2>";z
 					}
 
 					if (/h./.test(lineSplitObjs[i][j].type)) {
