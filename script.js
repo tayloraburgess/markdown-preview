@@ -231,7 +231,7 @@ var generatePreview = (file) => {
 			response.writeHead(200, {'Content-Type': 'text/html'});
 			response.end(htmlOut);
 			//console.log(htmlOut);
-			console.log(lineSplitObjs);
+			//console.log(lineSplitObjs);
 
 		});
 
