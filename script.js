@@ -76,6 +76,29 @@ function atxHeader(inputText, charIndex) {
 	else return {type: "text", content: "#"};
 }
 
+function space(inputText, charIndex) {
+
+	var spacesAfterCharIndex = 0;
+
+	for (j = charIndex + 1; j < inputText.length; j++) {
+		if (inputText.charAt(j) == "\n") break;
+		else {
+			if (inputText.charAt(j) != " ") spacesAfterCharIndex = 1; 
+		}
+	}
+
+	if (!spacesAfterCharIndex)  {
+		if (inputText.charAt(charIndex + 1) != "\n") {
+			if (inputText.charAt(charIndex - 1) != " ") return {type: "br"};
+		}
+		else if (inputText.charAt(charIndex - 1) != " ") {
+			return {type: "text", content: " "};
+		}
+	}
+
+	else return {type: "text", content: " "};
+}
+
 var generatePreview = (file) => {
 
 	var server = http.createServer( (request, response) => {
@@ -96,17 +119,22 @@ var generatePreview = (file) => {
 
 				if (thisChar != "\\") {
 
+					var addObj;
+
 					if (thisChar == "*" | thisChar == "_") {
-						var addObj = emphasis(fileText, thisChar, i);
+						addObj = emphasis(fileText, thisChar, i);
 					}
 					else if (thisChar == "#") {
-						var addObj = atxHeader(fileText, i);
+						addObj = atxHeader(fileText, i);
 					}
 					else if (thisChar == "-" | thisChar == "=") {
-						var addObj = setextHeader(fileText, thisChar, i);
+						addObj = setextHeader(fileText, thisChar, i);
 					}
-					else if (fileText.charAt(i) == "\n") var addObj = {type: "newline"};
-					else var addObj = ({type: "text", content: fileText.charAt(i)});
+					else if (thisChar == " ") {
+						addObj = space(fileText, i); 
+					}
+					else if (fileText.charAt(i) == "\n") addObj = {type: "newline"};
+					else addObj = ({type: "text", content: fileText.charAt(i)});
 
 				}
 
@@ -178,6 +206,10 @@ var generatePreview = (file) => {
 						htmlText[i - 1] += "</h2>";z
 					}
 
+					if (lineSplitObjs[i][j].type == "br") {
+						htmlText[i] += "<br>";
+					}
+
 					if (/h./.test(lineSplitObjs[i][j].type)) {
 						currentH = lineSplitObjs[i][j].type;
 						htmlText[i] += "<" + currentH + ">";
@@ -199,7 +231,7 @@ var generatePreview = (file) => {
 			response.writeHead(200, {'Content-Type': 'text/html'});
 			response.end(htmlOut);
 			//console.log(htmlOut);
-			//console.log(lineSplitObjs);
+			console.log(lineSplitObjs);
 
 		});
 
