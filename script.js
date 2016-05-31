@@ -79,6 +79,7 @@ function atxHeader(inputText, charIndex) {
 function space(inputText, charIndex) {
 
 	var spacesAfterCharIndex = 0;
+	var spacesBeforeCharIndex = 0;
 
 	for (j = charIndex + 1; j < inputText.length; j++) {
 		if (inputText.charAt(j) == "\n") break;
@@ -87,7 +88,20 @@ function space(inputText, charIndex) {
 		}
 	}
 
-	if (!spacesAfterCharIndex)  {
+	for (j = charIndex - 1; j > -1; j--) {
+		if (inputText.charAt(j) == "\n") break;
+		else {
+			if (inputText.charAt(j) != " ") spacesBeforeCharIndex = 1; 
+		}
+	}
+
+	if (!spacesBeforeCharIndex && !spacesAfterCharIndex) {
+		if (inputText.charAt(charIndex - 1) == "\n") {
+			return {type: "blank"};
+		}
+	}
+
+	else if (!spacesAfterCharIndex)  {
 		if (inputText.charAt(charIndex + 1) != "\n") {
 			if (inputText.charAt(charIndex - 1) != " ") return {type: "br"};
 		}
@@ -132,7 +146,8 @@ var generatePreview = (file) => {
 						var addObj = space(fileText, i); 
 					}
 					else if (fileText.charAt(i) == "\n") {
-						var addObj = {type: "newline"};
+						if (fileText.charAt(i - 1) == "\n") var addObj = {type: "blank"};
+						else var addObj = {type: "newline"};
 					}
 
 					else var addObj = ({type: "text", content: fileText.charAt(i)});
@@ -155,20 +170,20 @@ var generatePreview = (file) => {
 				}
 			}
 
+			var breakIDs = [];
+
 			var newlineIDs = [];
 			newlineIDs.push(-1);
 			for (j = 0; j < htmlObjs.length; j++) {
 				if (htmlObjs[j].type == "newline") newlineIDs.push(j);
+				if (htmlObjs[j].type == "blank") breakIDs.push(j);
 			}
 
-			var breakIDs = [];
 			for (j = 0; j < newlineIDs.length; j++) {
 				var shouldBreak = 0;
 
 				if (htmlObjs[newlineIDs[j] - 1]) {
-					// Need to implement a way for code to account for a line with only one space--should break the line, but currently doesn't
 					if (htmlObjs[newlineIDs[j] - 1].type == "newline") shouldBreak = 1;
-					if (htmlObjs[newlineIDs[j] - 1].type == "br") shouldBreak = 1;
 					if (/setext./.test(htmlObjs[newlineIDs[j] - 1].type)) shouldBreak = 1;
 				}
 				if (htmlObjs[newlineIDs[j - 1] + 1]) {
@@ -223,13 +238,13 @@ var generatePreview = (file) => {
 
 					if (lineSplitObjs[i][j].type == "setext1") {
 						htmlText[i] = "<h1>" + htmlText[i];
-						htmlText[i] += "</h1>";
+						currentH = "h1"
 
 					}
 
 					if (lineSplitObjs[i][j].type == "setext2") {
 						htmlText[i] = "<h2>" + htmlText[i];
-						htmlText[i] += "</h2>";z
+						currentH = "h2"
 					}
 
 					if (lineSplitObjs[i][j].type == "br") {
@@ -246,12 +261,16 @@ var generatePreview = (file) => {
 							htmlText[i] += "</" + currentH + ">";
 							currentH = "";
 						}
+						else {
+							htmlText[i] = "<p>" + htmlText[i];
+							htmlText[i] += "</p>"
+						}
 					}
 
 				}
 			}
 
-			//console.log(lineSplitObjs);
+			console.log(lineSplitObjs);
 
 			var htmlOut = "";
 			for (i = 0; i < htmlText.length; i++) htmlOut += htmlText[i];
