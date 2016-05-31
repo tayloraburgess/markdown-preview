@@ -270,7 +270,7 @@ var generatePreview = (file) => {
 				}
 			}
 
-			console.log(lineSplitObjs);
+			//console.log(lineSplitObjs);
 
 			var htmlOut = "";
 			for (i = 0; i < htmlText.length; i++) htmlOut += htmlText[i];
