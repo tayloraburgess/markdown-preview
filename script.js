@@ -119,30 +119,29 @@ var generatePreview = (file) => {
 
 				if (thisChar != "\\") {
 
-					var addObj;
-
 					if (thisChar == "*" | thisChar == "_") {
-						addObj = emphasis(fileText, thisChar, i);
+						var addObj = emphasis(fileText, thisChar, i);
 					}
 					else if (thisChar == "#") {
-						addObj = atxHeader(fileText, i);
+						var addObj = atxHeader(fileText, i);
 					}
 					else if (thisChar == "-" | thisChar == "=") {
-						addObj = setextHeader(fileText, thisChar, i);
+						var addObj = setextHeader(fileText, thisChar, i);
 					}
 					else if (thisChar == " ") {
-						addObj = space(fileText, i); 
+						var addObj = space(fileText, i); 
 					}
-					else if (fileText.charAt(i) == "\n") addObj = {type: "newline"};
-					else addObj = ({type: "text", content: fileText.charAt(i)});
+					else if (fileText.charAt(i) == "\n") {
+						var addObj = {type: "newline"};
+					}
+
+					else var addObj = ({type: "text", content: fileText.charAt(i)});
 
 				}
 
 				else {
-
 					i++;
 					var addObj = {type: "text", content: fileText.charAt(i)};
-
 				}
 
 				if (addObj) {
@@ -156,11 +155,38 @@ var generatePreview = (file) => {
 				}
 			}
 
+			var newlineIDs = [];
+			newlineIDs.push(-1);
 			for (j = 0; j < htmlObjs.length; j++) {
-				if (htmlObjs[j].type == "newline") {
-					lineSplitObjs.push([]);
+				if (htmlObjs[j].type == "newline") newlineIDs.push(j);
+			}
+
+			var breakIDs = [];
+			for (j = 0; j < newlineIDs.length; j++) {
+				var shouldBreak = 0;
+
+				if (htmlObjs[newlineIDs[j] - 1]) {
+					// Need to implement a way for code to account for a line with only one space--should break the line, but currently doesn't
+					if (htmlObjs[newlineIDs[j] - 1].type == "newline") shouldBreak = 1;
+					if (htmlObjs[newlineIDs[j] - 1].type == "br") shouldBreak = 1;
+					if (/setext./.test(htmlObjs[newlineIDs[j] - 1].type)) shouldBreak = 1;
 				}
-				else lineSplitObjs[lineSplitObjs.length - 1].push(htmlObjs[j]);
+				if (htmlObjs[newlineIDs[j - 1] + 1]) {
+					if (/h./.test(htmlObjs[newlineIDs[j - 1] + 1].type)) shouldBreak = 1;
+				}
+				if (htmlObjs[newlineIDs[j] + 1]) {
+					if (/h./.test(htmlObjs[newlineIDs[j] + 1].type)) shouldBreak = 1;
+				}
+				if (htmlObjs[newlineIDs[j + 2] - 1]) {
+					if (/setext./.test(htmlObjs[newlineIDs[j + 2] - 1].type)) shouldBreak = 1;
+				}
+
+				if (shouldBreak) breakIDs.push(newlineIDs[j]);
+			}
+
+			for (j = 0; j < htmlObjs.length; j++) {
+				if (breakIDs.indexOf(j) > -1) lineSplitObjs.push([]);
+				else if (htmlObjs[j].type != "newline") lineSplitObjs[lineSplitObjs.length - 1].push(htmlObjs[j]);
 			}
 
 			var emCount = 0;
@@ -196,14 +222,14 @@ var generatePreview = (file) => {
 					}
 
 					if (lineSplitObjs[i][j].type == "setext1") {
-						htmlText[i - 1] = "<h1>" + htmlText[i - 1];
-						htmlText[i - 1] += "</h1>";
+						htmlText[i] = "<h1>" + htmlText[i];
+						htmlText[i] += "</h1>";
 
 					}
 
 					if (lineSplitObjs[i][j].type == "setext2") {
-						htmlText[i - 1] = "<h2>" + htmlText[i - 1];
-						htmlText[i - 1] += "</h2>";z
+						htmlText[i] = "<h2>" + htmlText[i];
+						htmlText[i] += "</h2>";z
 					}
 
 					if (lineSplitObjs[i][j].type == "br") {
@@ -225,13 +251,14 @@ var generatePreview = (file) => {
 				}
 			}
 
+			//console.log(lineSplitObjs);
+
 			var htmlOut = "";
 			for (i = 0; i < htmlText.length; i++) htmlOut += htmlText[i];
 
 			response.writeHead(200, {'Content-Type': 'text/html'});
 			response.end(htmlOut);
 			//console.log(htmlOut);
-			//console.log(lineSplitObjs);
 
 		});
 
