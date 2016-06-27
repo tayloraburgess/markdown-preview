@@ -1,6 +1,6 @@
 # Markdown Preview
 
-Bash app that takes a markdown file as input, analyses it, and outputs HTML to a local HTTP server. Built primarily as a way to learn the basics of interpreters.
+Command line utility that takes a markdown file as input, analyses it, and outputs HTML to a local HTTP server. Built primarily as a way to learn the basics of interpreters.
 
 - Currenty Inteprets:
 	- Line Breaks
@@ -16,4 +16,4 @@ Bash app that takes a markdown file as input, analyses it, and outputs HTML to a
 	- Horizontal Rules
 	- Links (including auto)
 	- Images
-	- Closing hashes for atx headers
+	- Closing hashesq for atx headers
