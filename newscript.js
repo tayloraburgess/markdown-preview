@@ -186,11 +186,13 @@ function parser(inputArray) {
 		if (globalDebug) console.log("'blocks' rule called");
 		var node = { type: "blocks", children: [] };
 		while (this.currentToken.type != "EOF") {
-			if (this.currentToken.type == ">" && this.peekTokenType(1) == "space") {
+			this.blank();
+			if (globalDebug) console.log("'blank' rule returned");
+			if (this.currentToken.type == ">") {
 				var nestCheck = 0;
 				var peekLevel = 0;
-				while (this.peekTokenType(peekLevel) == ">" && this.peekTokenType(peekLevel + 1) == "space") {
-					peekLevel += 2;
+				while (this.peekTokenType(peekLevel) == ">") {
+					peekLevel++;
 					breakBlankLoop = false;
 					while (!breakBlankLoop) {
 						if (this.peekTokenType(peekLevel) == "space")
@@ -218,8 +220,10 @@ function parser(inputArray) {
 		while (!breakBlock) {
 			var nestCheck = 0;
 			var peekLevel = 0;
-			while (this.peekTokenType(peekLevel) == ">" && this.peekTokenType(peekLevel + 1) == "space") {
-				peekLevel += 2;
+			this.blank();
+			if (globalDebug) console.log("'blank' rule returned");
+			while (this.peekTokenType(peekLevel) == ">") {
+				peekLevel++;
 				breakBlankLoop = false;
 				while (!breakBlankLoop) {
 					if (this.peekTokenType(peekLevel) == "space")
@@ -238,7 +242,7 @@ function parser(inputArray) {
 				if (globalDebug) console.log("'blockquote' rule returned");
 
 				breakBlock = true;
-				if (this.currentToken.type == ">" && this.peekTokenType(1) == "space")
+				if (this.currentToken.type == ">")
 					breakBlock = false;
 			}
 
@@ -247,9 +251,8 @@ function parser(inputArray) {
 			}
 
 			else if (nestCheck == nestLevel) {
-				while (this.currentToken.type == ">" && this.peekTokenType(1) == "space") {
+				while (this.currentToken.type == ">") {
 					this.eat(">");
-					this.eat("space");
 					this.blank();
 					if (globalDebug) console.log("'blank' rule returned");
 				}
@@ -258,8 +261,8 @@ function parser(inputArray) {
 				if (globalDebug) console.log("'line' rule returned");
 
 				breakBlock = true;
-				if (this.currentToken.type == ">" && this.peekTokenType(1) == "space")
-					breakBlock = false;
+				if (this.currentToken.type == ">")
+					breakBlock = false;	
 			}
 		}
 		return node;
