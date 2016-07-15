@@ -179,7 +179,11 @@ function parser(inputArray) {
 	}
 
 	this.peekTokenType = function(advancePosition) {
-		return this.tokenArray[this.position + (advancePosition - 1)].type;
+		if (this.position + (advancePosition - 1) < this.tokenArray.length)
+			return this.tokenArray[this.position + (advancePosition - 1)].type;
+
+		else
+			return null;
 	}
 
 	this.blocks = function() {
@@ -187,8 +191,25 @@ function parser(inputArray) {
 		var node = { type: "blocks", children: [] };
 		while (this.currentToken.type != "EOF") {
 			this.blankLine();
-			if (globalDebug) console.log("'blank' rule returned");
-			if (this.currentToken.type == ">") {
+			if (globalDebug) console.log("'blankLine' rule returned");
+
+			var codeCheck = false;
+			if (this.currentToken.type == "tab")
+				codeCheck = true;
+			else {
+				var i;
+				for (i = 1; i < 5; i++) {
+					if (this.peekTokenType(i) != "space")
+						break;
+				}
+				if (i == 4)
+					codeCheck = true;
+			}
+
+			if (codeCheck)
+				node.children.push(this.codeBlock());
+
+			else if (this.currentToken.type == ">") {
 				var nestCheck = 0;
 				var peekLevel = 0;
 				while (this.peekTokenType(peekLevel) == ">") {
@@ -208,6 +229,61 @@ function parser(inputArray) {
 				if (globalDebug) console.log("'blockquote' rule returned");
 			}
 		}	
+		return node;
+	}
+
+	this.codeBlock = function() {
+		var node = { type: "codeblock", children: [] };
+		var breakBlock = false;
+		while(!breakBlock) {
+			var codeBlockType = 0;
+			if (this.currentToken.type == "tab")
+				codeBlockType = 1;
+			else {
+				var j;
+				for (j = 1; j < 5; j++) {
+					if (this.peekTokenType(j) != "space")
+						break;
+				}
+				if (j == 4)
+					codeBlockType = 2;
+			}
+
+			if (codeBlockType > 0) {
+				if (codeBlockType == 1)
+					this.eat("tab");
+				else if (codeBlockType == 2) {
+					var i;
+					for (i = 0; i < 4; i++)
+						this.eat("space");
+				}
+
+				node.children.push(this.codeLine());
+			}
+			else
+				breakBlock = true;
+		}
+		return node;
+	}
+
+	this.codeLine = function() {
+		if (globalDebug) console.log("'codeLine' rule called");
+		var node = { type: "codeline", children: [] };
+		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
+
+			if (this.currentToken.type == "space")
+				node.children.push(" ");
+			else if (this.currentToken.type == "tab")
+				node.children.push("	");
+			else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
+				node.children.push(this.currentToken.value);
+			else
+				node.children.push(this.currentToken.type);
+
+			this.currentToken = this.getNextToken();
+		}
+		if (this.currentToken.type == "newline")
+			this.eat("newline");
 		return node;
 	}
 
@@ -293,12 +369,28 @@ function parser(inputArray) {
 
 	this.blankLine = function() {
 		if (globalDebug) console.log("'blankline' rule called");
-		this.blank();
-		if (globalDebug) console.log("'blank' rule returned");
-		if (this.currentToken.type == "newline") {
-			this.eat("newline");
-			this.blankLine();
-			if (globalDebug) console.log("'blankline' rule returned");
+
+		var codeCheck = false;
+		if (this.currentToken.type == "tab")
+			codeCheck = true;
+		else {
+			var i;
+			for (i = 0; i < 3; i++) {
+				if (this.peekTokenType(i) != "space")
+					break;
+			}
+			if (i == 3)
+				codeCheck = true;
+		}
+
+		if (!codeCheck) {
+			this.blank();
+			if (globalDebug) console.log("'blank' rule returned");
+			if (this.currentToken.type == "newline") {
+				this.eat("newline");
+				this.blankLine();
+				if (globalDebug) console.log("'blankline' rule returned");
+			}
 		}
 	}
 
@@ -306,7 +398,16 @@ function parser(inputArray) {
 		if (globalDebug) console.log("'line' rule called");
 		var node = { type: "line", children: [] };
 		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
-			node.children.push(this.currentToken);
+
+			if (this.currentToken.type == "space")
+				node.children.push(" ");
+			else if (this.currentToken.type == "tab")
+				node.children.push("	");
+			else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
+				node.children.push(this.currentToken.value);
+			else
+				node.children.push(this.currentToken.type);
+
 			this.currentToken = this.getNextToken();
 		}
 		if (this.currentToken.type == "newline")
