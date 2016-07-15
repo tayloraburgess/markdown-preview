@@ -186,7 +186,7 @@ function parser(inputArray) {
 		if (globalDebug) console.log("'blocks' rule called");
 		var node = { type: "blocks", children: [] };
 		while (this.currentToken.type != "EOF") {
-			this.blank();
+			this.blankLine();
 			if (globalDebug) console.log("'blank' rule returned");
 			if (this.currentToken.type == ">") {
 				var nestCheck = 0;
@@ -259,8 +259,17 @@ function parser(inputArray) {
 
 				node.children.push(this.line());
 				if (globalDebug) console.log("'line' rule returned");
+				this.blank();
+				if (globalDebug) console.log("'blank' rule returned");
+				while (this.currentToken.type != ">" && this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
+					node.children.push(this.line());
+					if (globalDebug) console.log("'line' rule returned");
+					this.blank();
+					if (globalDebug) console.log("'blank' rule returned");
+				}
 
-				breakBlock = true;
+				if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
+					breakBlock = true;
 				if (this.currentToken.type == ">")
 					breakBlock = false;	
 			}
