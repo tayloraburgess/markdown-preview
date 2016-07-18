@@ -186,6 +186,84 @@ function parser(inputArray) {
 			return null;
 	}
 
+	this.lineFrontCheck = function() {
+		var frontTokens = [];
+
+		// check for code block at beginning of line--either a single tab or three spaces
+		var codeCheck = false;
+		if (this.currentToken.type == "tab") {
+			codeCheck = true;
+			var i = 4;
+		}
+		else {
+			var i;
+			for (i = 1; i < 5; i++) {
+				if (this.peekTokenType(i) != "space")
+					break;
+			}
+			if (i == 4)
+				codeCheck = true;
+		}
+
+		// if there's a code block, return just that token--no other block types can be nested in it
+		if (codeCheck) {
+			frontTokens.push( { name: "codeblock", position: i } );
+			return frontTokens;
+		}
+
+		// loop through blank tokens (tabs & spaces)
+		var peekLevel = 0;
+		var breakBlankLoop = false;
+		while (!breakBlankLoop) {
+			if (this.peekTokenType(peekLevel) == "space")
+				peekLevel++;
+			else if (this.peekTokenType(peekLevel) == "tab")
+				peekLevel++;
+			else
+				breakBlankLoop = true;
+		}
+
+		// check if the current token indicates a block, and loop until there are no more block-level tokens
+		var frontTypes = [ ">" ];
+		// if returned index is -1, the current token isn't in the "frontTypes" array, so break the loop
+		while (frontTypes.indexOf(this.peekTokenType(peekLevel)) > -1) {
+
+			// if there's a ">" token, a blockquote starts, so push the appropriate token to the array that will return
+			if (this.peekTokenType(peekLevel) == ">") {
+				frontTokens.push( { name: "blockquote", position: peekLevel } );
+				peekLevel++;
+			}
+
+			// loop through blank tokens (tabs & spaces)
+			var breakBlankLoop = false;
+			while (!breakBlankLoop) {
+				if (this.peekTokenType(peekLevel) == "space")
+					peekLevel++;
+				else if (this.peekTokenType(peekLevel) == "tab")
+					peekLevel++;
+				else
+					breakBlankLoop = true;
+			}
+		}
+		return frontTokens;
+	}
+
+	this.checkFrontTokensFromFirst = function(frontTokens, type) {
+		for (var i = 0; i < frontTokens.length; i++) {
+			if (frontTokens[i].name == type)
+				return frontTokens[i];
+		}
+		return false;
+	}
+
+	this.checkFrontTokensFromLast = function(frontTokens, type) {
+		for (var i = frontTokens.length - 1; i > -1; i--) {
+			if (frontTokens[i].name == type)
+				return frontTokens[i];
+		}
+		return false;
+	}
+
 	this.blocks = function() {
 		if (globalDebug) console.log("'blocks' rule called");
 		var node = { type: "blocks", children: [] };
@@ -193,39 +271,18 @@ function parser(inputArray) {
 			this.blankLine();
 			if (globalDebug) console.log("'blankLine' rule returned");
 
-			var codeCheck = false;
-			if (this.currentToken.type == "tab")
-				codeCheck = true;
-			else {
-				var i;
-				for (i = 1; i < 5; i++) {
-					if (this.peekTokenType(i) != "space")
-						break;
-				}
-				if (i == 4)
-					codeCheck = true;
+			var frontTokens = this.lineFrontCheck();
+			var blockQuoteLevel = 0;
+			for (var i = 0; i < frontTokens.length; i++) {
+				if (frontTokens[i].name == "blockquote")
+					blockQuoteLevel++;
 			}
 
-			if (codeCheck)
+			if (this.checkFrontTokensFromFirst(frontTokens, "codeblock"))
 				node.children.push(this.codeBlock());
 
-			else if (this.currentToken.type == ">") {
-				var nestCheck = 0;
-				var peekLevel = 0;
-				while (this.peekTokenType(peekLevel) == ">") {
-					peekLevel++;
-					breakBlankLoop = false;
-					while (!breakBlankLoop) {
-						if (this.peekTokenType(peekLevel) == "space")
-							peekLevel++;
-						else if (this.peekTokenType(peekLevel) == "tab")
-							peekLevel++;
-						else
-							breakBlankLoop = true;
-					}
-					nestCheck++;
-				}	
-				node.children.push(this.blockQuote(nestCheck));
+			else if (blockQuoteLevel > 0) {
+				node.children.push(this.blockQuote(blockQuoteLevel));
 				if (globalDebug) console.log("'blockquote' rule returned");
 			}
 		}	
@@ -298,6 +355,7 @@ function parser(inputArray) {
 			var peekLevel = 0;
 			this.blank();
 			if (globalDebug) console.log("'blank' rule returned");
+			
 			while (this.peekTokenType(peekLevel) == ">") {
 				peekLevel++;
 				breakBlankLoop = false;
@@ -311,7 +369,6 @@ function parser(inputArray) {
 				}
 				nestCheck++;
 			}	
-			console.log("Quote Level: ", nestCheck);
 
 			if (nestCheck > nestLevel) {
 				node.children.push(this.blockQuote(nestCheck));
