@@ -44,6 +44,14 @@ function lexer(inputText) {
 				return this.checkInt(this.peek(-1));
 			}
 			else if (this.currentChar == " ") {
+				if (this.peek(1) == " ") {
+					if (this.peek(2) == " ") {
+						if (this.peek(3) == " ") {
+							this.advance(4);
+							return new token ("4space");
+						}
+					}
+				}
 				this.advance(1);
 				return new token("space");
 			}
@@ -188,58 +196,24 @@ function parser(inputArray) {
 
 	this.lineFrontCheck = function() {
 		var frontTokens = [];
-
-		// check for code block at beginning of line--either a single tab or three spaces
-		var codeCheck = false;
-		if (this.currentToken.type == "tab") {
-			codeCheck = true;
-		}
-		else {
-			var i;
-			for (i = 1; i < 5; i++) {
-				if (this.peekTokenType(i) != "space")
-					break;
-			}
-			if (i == 4)
-				codeCheck = true;
-		}
-
-		// if there's a code block, return just that token--no other block types can be nested in it
-		if (codeCheck) {
-			frontTokens.push( { name: "codeblock", position: i } );
-			return frontTokens;
-		}
-
-		// loop through blank tokens (tabs & spaces)
 		var peekLevel = 0;
-		var breakBlankLoop = false;
-		while (!breakBlankLoop) {
-			if (this.peekTokenType(peekLevel) == "space")
-				peekLevel++;
-			else if (this.peekTokenType(peekLevel) == "tab")
-				peekLevel++;
-			else
-				breakBlankLoop = true;
-		}
 
-		// check if the current token indicates a block, and loop until there are no more block-level tokens
-		var frontTypes = [ ">", "*", "+", "-", "number" ];
+		var frontTypes = [ ">", "*", "+", "-", "number", "tab", "4space" ];
 
-		// if returned index is -1, the current token isn't in the "frontTypes" array, so break the loop
 		while (frontTypes.indexOf(this.peekTokenType(peekLevel)) > -1) {
 
-			// if there's a ">" token, a blockquote starts, so push the appropriate token to the array that will return
-			if (this.peekTokenType(peekLevel) == ">") {
+			if (this.peekTokenType(peekLevel) == "tab" || this.peekTokenType(peekLevel) == "4space") {
+				frontTokens.push( { name: "codeblock", position: peekLevel } );
+				break;
+			}
+			else if (this.peekTokenType(peekLevel) == ">") {
 				frontTokens.push( { name: "blockquote", position: peekLevel } );
 				peekLevel++;
 			}
 
-			// loop through blank tokens (tabs & spaces)
 			var breakBlankLoop = false;
 			while (!breakBlankLoop) {
 				if (this.peekTokenType(peekLevel) == "space")
-					peekLevel++;
-				else if (this.peekTokenType(peekLevel) == "tab")
 					peekLevel++;
 				else
 					breakBlankLoop = true;
@@ -270,54 +244,91 @@ function parser(inputArray) {
 		while (this.currentToken.type != "EOF") {
 			this.blankLine();
 			if (globalDebug) console.log("'blankLine' rule returned");
-
 			var frontTokens = this.lineFrontCheck();
+			console.log(frontTokens);
 
 			if (frontTokens[0].name == "codeblock")
-				node.children.push(this.codeBlock());
+				node.children.push(this.codeBlock(0, frontTokens));
 
 			else if (frontTokens[0].name == "blockquote") {
-				var blockQuoteLevel = 0;
+				var nestCheck = 0;
 				for (var i = 0; i < frontTokens.length; i++) {
 					if (frontTokens[i].name == "blockquote")
-						blockQuoteLevel++;
+						nestCheck++;
+					else
+						break;
 				}
-				node.children.push(this.blockQuote(blockQuoteLevel, frontTokens));
+
+				node.children.push(this.blockQuote(0, nestCheck, frontTokens));
 				if (globalDebug) console.log("'blockquote' rule returned");
 			}
 		}	
 		return node;
 	}
 
-	this.codeBlock = function() {
+	this.codeBlock = function(tokenIndex, frontTokens) {
+		if (globalDebug) console.log("'codeBlock' rule called");
 		var node = { type: "codeblock", children: [] };
 		var breakBlock = false;
+
+		if (this.currentToken.type == "tab")
+			this.eat("tab");
+		else if (this.currentToken.type == "4space") {
+			this.eat("4space");
+		}
+
+		node.children.push(this.codeLine());
+		if (globalDebug) console.log("'codeLine' rule returned");
+		console.log(frontTokens);
+		if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
+			breakBlock = true;
+
 		while(!breakBlock) {
-			var codeBlockType = 0;
-			if (this.currentToken.type == "tab")
-				codeBlockType = 1;
-			else {
-				var j;
-				for (j = 1; j < 5; j++) {
-					if (this.peekTokenType(j) != "space")
-						break;
+
+			var checkFront = true;
+			var peekLevel = 0;
+
+
+			for (var i = 0; i < frontTokens.length; i++) {
+				if (this.peekTokenType(peekLevel) == ">" && frontTokens[i].name == "blockquote")
+					peekLevel++;
+				else if (this.peekTokenType(peekLevel) == "tab" && frontTokens[i].name == "codeblock")
+					peekLevel++;
+				else if (this.peekTokenType(peekLevel) == "4space" && frontTokens[i].name == "codeblock")
+					peekLevel++;
+				else {
+					checkFront = false;
+					break;
 				}
-				if (j == 4)
-					codeBlockType = 2;
+
+				var breakBlankLoop = false;
+				while (!breakBlankLoop) {
+					if (this.peekTokenType(peekLevel) == "space")
+						peekLevel++;
+					else
+						breakBlankLoop = true;
+				}
 			}
 
-			if (codeBlockType > 0) {
-				if (codeBlockType == 1)
-					this.eat("tab");
-				else if (codeBlockType == 2) {
-					var i;
-					for (i = 0; i < 4; i++)
-						this.eat("space");
+			if (checkFront) {
+				for (var i = 0; i < frontTokens.length; i++) {
+					if (this.currentToken.type == ">")
+						this.eat(">");
+					else if (this.currentToken.type == "tab")
+						this.eat("tab");
+					else if (this.currentToken.type == "4space")
+						this.eat("4space");
+
+					this.blankNoTab();
 				}
 
 				node.children.push(this.codeLine());
+				if (globalDebug) console.log("'codeLine' rule returned");
 			}
-			else
+			else 
+				breakBlock = true;
+
+			if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
 				breakBlock = true;
 		}
 		return node;
@@ -344,28 +355,30 @@ function parser(inputArray) {
 		return node;
 	}
 
-	this.blockQuote = function(nestLevel, inputFrontTokens) {
+	this.blockQuote = function(tokenStart, tokenIndex, inputFrontTokens) {
 		var frontTokens = inputFrontTokens;
 		if (globalDebug) console.log("'blockquote' rule called");
 		var node = { type: "blockquote", children: [] };
 		if (globalDebug) console.log("'line' rule returned");
 		var breakBlock = false;
 
+		console.log(frontTokens);
+
 		while (!breakBlock) {
 			var nestCheck = 0;
 			var peekLevel = 0;
-			this.blank();
+			this.blankNoTab();
 			if (globalDebug) console.log("'blank' rule returned");
 
-			for (var i = 0; i < frontTokens.length; i++) {
+			for (var i = tokenStart; i < frontTokens.length; i++) {
 				if (frontTokens[i].name == "blockquote")
 					nestCheck++;
+				else
+					break;
 			}
-			console.log("Nest Level: ", nestLevel);
-			console.log("Quote Level: ", nestCheck);
 
-			if (nestCheck > nestLevel) {
-				node.children.push(this.blockQuote(nestCheck, frontTokens));
+			if (nestCheck > tokenIndex) {
+				node.children.push(this.blockQuote(tokenStart, nestCheck, frontTokens));
 				if (globalDebug) console.log("'blockquote' rule returned");
 				frontTokens = this.lineFrontCheck();
 
@@ -374,30 +387,36 @@ function parser(inputArray) {
 					breakBlock = false;
 			}
 
-			else if (nestCheck < nestLevel) {
+			else if (nestCheck < tokenIndex) {
 				breakBlock = true;
 			}
 
-			else if (nestCheck == nestLevel) {
+			else if (nestCheck == tokenIndex) {
 				while (this.currentToken.type == ">") {
 					this.eat(">");
-					this.blank();
-					if (globalDebug) console.log("'blank' rule returned");
+					this.blankNoTab();
+					if (globalDebug) console.log("'blankNoTab' rule returned");
 				}
 
-				node.children.push(this.line());
-				if (globalDebug) console.log("'line' rule returned");
-				frontTokens = this.lineFrontCheck();
-				console.log(frontTokens);
-				this.blank();
-				if (globalDebug) console.log("'blank' rule returned");
-				while (this.currentToken.type != ">" && this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
+				if (this.currentToken.type == "tab" || this.currentToken.type == "4space") {
+					node.children.push(this.codeBlock(nestCheck + 1, frontTokens));
+					frontTokens = this.lineFrontCheck();
+					if (globalDebug) console.log("'codeblock' rule returned");
+				}
+				else {
 					node.children.push(this.line());
 					if (globalDebug) console.log("'line' rule returned");
 					frontTokens = this.lineFrontCheck();
-					console.log(frontTokens);
-					this.blank();
+				
+					this.blankNoTab();
 					if (globalDebug) console.log("'blank' rule returned");
+					while (this.currentToken.type != ">" && this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
+						node.children.push(this.line());
+						if (globalDebug) console.log("'line' rule returned");
+						frontTokens = this.lineFrontCheck();
+						this.blankNoTab();
+						if (globalDebug) console.log("'blank' rule returned");
+					}
 				}
 
 				if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
@@ -423,24 +442,20 @@ function parser(inputArray) {
 		}
 	}
 
+	this.blankNoTab = function() {
+		if (globalDebug) console.log("'blankNoTab' rule called");
+		if (this.currentToken.type == "space") {
+			this.eat("space");
+			this.blankNoTab();
+			if (globalDebug) console.log("'blankNoTab' rule returned");
+		}
+	}
+
 	this.blankLine = function() {
 		if (globalDebug) console.log("'blankline' rule called");
 
-		var codeCheck = false;
-		if (this.currentToken.type == "tab")
-			codeCheck = true;
-		else {
-			var i;
-			for (i = 0; i < 3; i++) {
-				if (this.peekTokenType(i) != "space")
-					break;
-			}
-			if (i == 3)
-				codeCheck = true;
-		}
-
-		if (!codeCheck) {
-			this.blank();
+		if (!(this.currentToken.type == "tab" || this.currentToken.type == "4space")) {
+			this.blankNoTab();	
 			if (globalDebug) console.log("'blank' rule returned");
 			if (this.currentToken.type == "newline") {
 				this.eat("newline");
