@@ -199,6 +199,7 @@ function parser(inputArray) {
 		var peekLevel = 0;
 
 		var frontTypes = [ ">", "*", "+", "-", "number", "tab", "4space" ];
+		var listTypes = [ "*", "+", "-", "number"]
 
 		while (frontTypes.indexOf(this.peekTokenType(peekLevel)) > -1) {
 
@@ -210,6 +211,7 @@ function parser(inputArray) {
 				frontTokens.push( { name: "blockquote", position: peekLevel } );
 				peekLevel++;
 			}
+			else if (this.peekTokenType(peekLevel))
 
 			var breakBlankLoop = false;
 			while (!breakBlankLoop) {
@@ -245,10 +247,11 @@ function parser(inputArray) {
 			this.blankLine();
 			if (globalDebug) console.log("'blankLine' rule returned");
 			var frontTokens = this.lineFrontCheck();
-			console.log(frontTokens);
 
-			if (frontTokens[0].name == "codeblock")
+			if (frontTokens[0].name == "codeblock") {
 				node.children.push(this.codeBlock(0, frontTokens));
+				if (globalDebug) console.log("'codeblock' rule returned");
+			}
 
 			else if (frontTokens[0].name == "blockquote") {
 				var nestCheck = 0;
@@ -258,12 +261,19 @@ function parser(inputArray) {
 					else
 						break;
 				}
-
 				node.children.push(this.blockQuote(0, nestCheck, frontTokens));
 				if (globalDebug) console.log("'blockquote' rule returned");
 			}
+
+			else if (frontTokens[0].name == "list") {
+				node.children.push(this.list(0, frontTokens));
+			}
 		}	
 		return node;
+	}
+
+	this.list = function(tokenIndex, frontTokens) {
+
 	}
 
 	this.codeBlock = function(tokenIndex, frontTokens) {
@@ -279,7 +289,6 @@ function parser(inputArray) {
 
 		node.children.push(this.codeLine());
 		if (globalDebug) console.log("'codeLine' rule returned");
-		console.log(frontTokens);
 		if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
 			breakBlock = true;
 
@@ -361,8 +370,6 @@ function parser(inputArray) {
 		var node = { type: "blockquote", children: [] };
 		if (globalDebug) console.log("'line' rule returned");
 		var breakBlock = false;
-
-		console.log(frontTokens);
 
 		while (!breakBlock) {
 			var nestCheck = 0;
