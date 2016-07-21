@@ -1,0 +1,169 @@
+#!/usr/bin/env node
+
+var globalDebug = true;
+
+function token(initType, initValue) {
+	this.type = initType;
+	if (initValue != null)
+		this.value = initValue;
+}
+
+function lexer(inputText) {
+	this.position = 0;
+	this.text = inputText;
+	this.currentChar = this.text[this.position];
+
+	this.digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+
+	this.error = function(invalid) {
+		throw "Invalid character: " + invalid;
+	}
+
+	this.advance = function (movePos) {
+		this.position += movePos;
+		if (this.position > this.text.length - 1)
+			this.currentChar = null;
+		else
+			this.currentChar = this.text[this.position];						
+	}
+
+	this.peek = function (movePos) {
+		var peekPos = this.position + movePos;
+		if (peekPos > this.text.length - 1 || peekPos < 0)
+			return null;
+		else
+			return this.text[peekPos];
+	}
+
+	this.getNextToken = function() {
+		while (this.currentChar != null) {
+
+			if (this.currentChar in this.digits) {
+				this.advance(1);
+				return this.checkInt(this.peek(-1));
+			}
+			else if (this.currentChar == " ") {
+				if (this.peek(1) == " ") {
+					if (this.peek(2) == " ") {
+						if (this.peek(3) == " ") {
+							this.advance(4);
+							return new token ("4space");
+						}
+					}
+				}
+				this.advance(1);
+				return new token("space");
+			}
+			else if (this.currentChar == "\n") {
+				this.advance(1);
+				return new token("newline");
+			}
+			else if (this.currentChar == "\t") {
+				this.advance(1);
+				return new token("tab");
+			}
+			else if (this.currentChar == "=") {
+				this.advance(1);
+				return new token("=");
+			}
+			else if (this.currentChar == "-") {
+				this.advance(1);
+				return new token("-");
+			}
+			else if (this.currentChar == "_") {
+				this.advance(1);
+				return new token("_");
+			}
+			else if (this.currentChar == "#") {
+				this.advance(1);
+				return new token("#");
+			}
+			else if (this.currentChar == ">") {
+				this.advance(1);
+				return new token(">");
+			}
+			else if (this.currentChar == "<") {
+				this.advance(1);
+				return new token("<");
+			}
+			else if (this.currentChar == "*") {
+				this.advance(1);
+				return new token("*");
+			}
+			else if (this.currentChar == "+") {
+				this.advance(1);
+				return new token("+");
+			}
+			else if (this.currentChar == "=") {
+				this.advance(1);
+				return new token("=");
+			}
+			else if (this.currentChar == ".") {
+				this.advance(1);
+				return new token(".");
+			}
+			else if (this.currentChar == "[") {
+				this.advance(1);
+				return new token("[");
+			}
+			else if (this.currentChar == "]") {
+				this.advance(1);
+				return new token("]");
+			}
+			else if (this.currentChar == "(") {
+				this.advance(1);
+				return new token("(");
+			}
+			else if (this.currentChar == ")") {
+				this.advance(1);
+				return new token(")");
+			}
+			else if (this.currentChar == ":") {
+				this.advance(1);
+				return new token(":");
+			}
+			else if (this.currentChar == "`") {
+				this.advance(1);
+				return new token("`");
+			}
+			else if (this.currentChar == "!") {
+				this.advance(1);
+				return new token("!");
+			}
+			else {
+				this.advance(1);
+				return new token("plaintext", this.peek(-1));
+			}
+			this.error(this.currentChar);
+		}
+		return new token("EOF", null);
+	}
+
+	this.checkInt = function(intString) {
+		if (!(this.peek(1) in this.digits)) {
+			this.advance(1);
+			return new token("number", intString);
+		}
+		else {
+			var passString = intString += this.currentChar;
+			this.advance(1);
+			return this.checkInt(passString);
+		}
+	}
+
+	this.lex = function() {
+		var tokenArray = [];
+		var nextToken = this.getNextToken();
+		tokenArray.push(nextToken);
+		while (nextToken.type != "EOF") {
+			nextToken = this.getNextToken();
+			tokenArray.push(nextToken);
+		}
+		return tokenArray;
+	}
+}
+
+module.exports = {
+	token: token, 
+	lexer: lexer
+};
