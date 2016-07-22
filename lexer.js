@@ -39,8 +39,7 @@ function lexer(inputText) {
 		while (this.currentChar != null) {
 
 			if (this.currentChar in this.digits) {
-				this.advance(1);
-				return this.checkInt(this.peek(-1));
+				return this.checkInt();
 			}
 			else if (this.currentChar == " ") {
 				if (this.peek(1) == " ") {
@@ -140,7 +139,12 @@ function lexer(inputText) {
 	}
 
 	this.checkInt = function(intString) {
+
+		if (!intString)
+			intString = "";
+
 		if (!(this.peek(1) in this.digits)) {
+			intString += this.currentChar;
 			this.advance(1);
 			return new token("number", intString);
 		}

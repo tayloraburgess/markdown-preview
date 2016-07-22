@@ -37,9 +37,10 @@ function parser(inputArray) {
 		var peekLevel = 0;
 
 		var frontTypes = [ ">", "*", "+", "-", "number", "tab", "4space" ];
-		var listTypes = [ "*", "+", "-", "number" ]
+		var listTypes = [ "*", "+", "-"]
 
 		while (frontTypes.indexOf(this.peekTokenType(peekLevel)) > -1) {
+			console.log(this.currentToken);
 
 			if (this.peekTokenType(peekLevel) == "tab" || this.peekTokenType(peekLevel) == "4space") {
 				frontTokens.push( { name: "codeblock", position: peekLevel } );
@@ -49,7 +50,22 @@ function parser(inputArray) {
 				frontTokens.push( { name: "blockquote", position: peekLevel } );
 				peekLevel++;
 			}
-			else if (this.peekTokenType(peekLevel))
+			else if (listTypes.indexOf(this.peekTokenType(peekLevel)) > -1) {
+				if (this.peekTokenType(peekLevel + 1) == "tab" || this.peekTokenType(peekLevel + 1) == "space") {
+					frontTokens.push( { name: "list", position: peekLevel } );
+				}
+				peekLevel++;
+			}
+			else if (this.peekTokenType(peekLevel) ==  "number") {
+				if (this.peekTokenType(peekLevel + 1) == ".") {
+					if (this.peekTokenType(peekLevel + 2) == "tab" || this.peekTokenType(peekLevel + 2) == "space") {
+						frontTokens.push( { name: "orderedlist", position: peekLevel } );
+					}
+				}
+				peekLevel += 2;
+			}
+			else
+				break;
 
 			var breakBlankLoop = false;
 			while (!breakBlankLoop) {

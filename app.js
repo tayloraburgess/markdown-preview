@@ -3,9 +3,7 @@
 var fs = require("fs");
 
 const lexerInclude = require("./lexer.js");
-console.log(lexerInclude);
 const parserInclude = require("./parser.js");
-console.log(parserInclude);
 
 function preview() {
 	var file = "test.txt";
@@ -15,7 +13,8 @@ function preview() {
 
 		testLexer = new lexerInclude.lexer(data.toString());
 		testParser = new parserInclude.parser(testLexer.lex());
-		console.log(JSON.stringify(testParser.parse(), null, "   "));
+		//console.log(JSON.stringify(testParser.parse(), null, "   "));
+		console.log(JSON.stringify(testParser.lineFrontCheck(), null, "   "));
 	});
 }
 
