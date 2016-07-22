@@ -35,6 +35,7 @@ function parser(inputArray) {
 	this.lineFrontCheck = function() {
 		var frontTokens = [];
 		var peekLevel = 0;
+		var oneList = false;
 
 		var frontTypes = [ ">", "*", "+", "-", "number", "tab", "4space" ];
 		var listTypes = [ "*", "+", "-"]
@@ -50,18 +51,28 @@ function parser(inputArray) {
 				peekLevel++;
 			}
 			else if (listTypes.indexOf(this.peekTokenType(peekLevel)) > -1) {
-				if (this.peekTokenType(peekLevel + 1) == "tab" || this.peekTokenType(peekLevel + 1) == "space") {
-					frontTokens.push( { name: "list", position: peekLevel } );
+				if (oneList)
+					break;
+				else {
+					if (this.peekTokenType(peekLevel + 1) == "tab" || this.peekTokenType(peekLevel + 1) == "space") {
+						frontTokens.push( { name: "list", position: peekLevel } );
+						oneList = true;
+					}
+					peekLevel++;
 				}
-				peekLevel++;
 			}
 			else if (this.peekTokenType(peekLevel) ==  "number") {
-				if (this.peekTokenType(peekLevel + 1) == ".") {
-					if (this.peekTokenType(peekLevel + 2) == "tab" || this.peekTokenType(peekLevel + 2) == "space") {
-						frontTokens.push( { name: "orderedlist", position: peekLevel } );
+				if (oneList)
+					break;
+				else {
+					if (this.peekTokenType(peekLevel + 1) == ".") {
+						if (this.peekTokenType(peekLevel + 2) == "tab" || this.peekTokenType(peekLevel + 2) == "space") {
+							frontTokens.push( { name: "orderedlist", position: peekLevel } );
+							oneList = true;
+						}
 					}
+					peekLevel += 2;
 				}
-				peekLevel += 2;
 			}
 			else
 				break;
