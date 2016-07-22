@@ -141,9 +141,23 @@ function parser(inputArray) {
 		while(!breakBlock) {
 			var newFrontTokens = this.lineFrontCheck();
 			if (this.compareFront(frontTokens, newFrontTokens)) {
+				var pointNode = { type: "point", children: [] };
 				this.eatFront(frontTokens);
-				node.children.push(this.line());
+
+				pointNode.children.push(this.line());
 				if (globalDebug) console.log("'line' rule returned");
+				var tempCheck = this.lineFrontCheck();
+				console.log(tempCheck.length);
+
+				while (tempCheck.length == 0 && this.currentToken.type != "EOF") {
+					pointNode.children.push(this.line());
+					if (globalDebug) console.log("'line' rule returned");
+					tempCheck = this.lineFrontCheck();
+					console.log(tempCheck);
+					console.log(tempCheck.length);
+				}
+
+				node.children.push(pointNode);				
 			}
 			else {
 				var newFrontTokens = this.lineFrontCheck();
@@ -238,7 +252,7 @@ function parser(inputArray) {
 		if (this.currentToken.type == "tab")
 			this.eat("tab");
 		else if (this.currentToken.type == "4space") {
-			this.eat("4space");
+			this.eat("4space");z
 		}
 
 		node.children.push(this.codeLine());
