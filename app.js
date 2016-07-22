@@ -13,8 +13,8 @@ function preview() {
 
 		testLexer = new lexerInclude.lexer(data.toString());
 		testParser = new parserInclude.parser(testLexer.lex());
-		//console.log(JSON.stringify(testParser.parse(), null, "   "));
-		console.log(JSON.stringify(testParser.lineFrontCheck(), null, "   "));
+		console.log(JSON.stringify(testParser.parse(), null, "   "));
+		//console.log(JSON.stringify(testParser.lineFrontCheck(), null, "   "));
 	});
 }
 

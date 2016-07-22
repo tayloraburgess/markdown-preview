@@ -40,7 +40,6 @@ function parser(inputArray) {
 		var listTypes = [ "*", "+", "-"]
 
 		while (frontTypes.indexOf(this.peekTokenType(peekLevel)) > -1) {
-			console.log(this.currentToken);
 
 			if (this.peekTokenType(peekLevel) == "tab" || this.peekTokenType(peekLevel) == "4space") {
 				frontTokens.push( { name: "codeblock", position: peekLevel } );
@@ -77,11 +76,11 @@ function parser(inputArray) {
 		}
 		return frontTokens;
 	}
-
+/*
 	this.checkFrontTokensFromFirst = function(frontTokens, type) {
 		for (var i = 0; i < frontTokens.length; i++) {
 			if (frontTokens[i].name == type)
-				return frontTokens[i];
+				return i;
 		}
 		return false;
 	}
@@ -89,10 +88,12 @@ function parser(inputArray) {
 	this.checkFrontTokensFromLast = function(frontTokens, type) {
 		for (var i = frontTokens.length - 1; i > -1; i--) {
 			if (frontTokens[i].name == type)
-				return frontTokens[i];
+				return i;
 		}
 		return false;
 	}
+	*/
+
 
 	this.blocks = function() {
 		if (globalDebug) console.log("'blocks' rule called");
@@ -121,13 +122,112 @@ function parser(inputArray) {
 
 			else if (frontTokens[0].name == "list") {
 				node.children.push(this.list(0, frontTokens));
+				if (globalDebug) console.log("'list' rule returned");
+			}
+			else if (frontTokens[0].name == "orderedlist") {
+				node.children.push(this.orderedList(0, frontTokens));
+				if (globalDebug) console.log("'orderedList' rule returned");
 			}
 		}	
 		return node;
 	}
 
-	this.list = function(tokenIndex, frontTokens) {
+	this.list = function(tokenStart, inputFrontTokens) {
+		if (globalDebug) console.log("'list' rule called");
+		var frontTokens = inputFrontTokens;
+		var node = { type: "list", children: [] };
+		breakBlock = false;
 
+		while(!breakBlock) {
+			var newFrontTokens = this.lineFrontCheck();
+			if (this.compareFront(frontTokens, newFrontTokens)) {
+				this.eatFront(frontTokens);
+				node.children.push(this.line());
+				if (globalDebug) console.log("'line' rule returned");
+			}
+			else {
+				var newFrontTokens = this.lineFrontCheck();
+				if (newFrontTokens.length <= frontTokens.length) {
+					breakBlock = true;
+				}
+				else {
+					if (frontTokens[tokenStart].name == newFrontTokens[tokenStart].name) {
+						frontTokens = newFrontTokens;
+						if (frontTokens[tokenStart + 1].name == "list") {
+							node.children.push(this.list(tokenStart + 1, frontTokens));
+							if (globalDebug) console.log("'list' rule returned");
+						}
+						else if (frontTokens[tokenStart + 1].name == "orderedlist") {
+							node.children.push(this.orderedList(tokenStart + 1, frontTokens));
+							if (globalDebug) console.log("'orderedList' rule returned");
+						}
+						else if (frontTokens[tokenStart + 1].name == "codeblock") {
+							node.children.push(this.codeBlock(tokenStart + 1, frontTokens));
+							if (globalDebug) console.log("'codeBlock' rule returned");
+						}
+						else if (frontTokens[tokenStart + 1].name == "blockquote") {
+							var nestCheck = 0;
+							for (var i = 0; i < frontTokens.length; i++) {
+								if (frontTokens[i].name == "blockquote")
+									nestCheck++;
+								else
+									break;
+							}
+							node.children.push(this.blockQuote(tokenStart + 1, nestCheck, frontTokens));
+							if (globalDebug) console.log("'blockquote' rule returned");
+						}
+					}
+					else {
+						breakBlock = true;
+					}
+				}
+			}
+
+			if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
+				breakBlock = true;
+		}
+		return node;
+	}
+
+	this.orderedList = function(tokenIndex, frontTokens) {
+
+	}
+
+	this.compareFront = function(frontTokens, newFrontTokens) {
+		var check = true;
+		if (frontTokens.length != newFrontTokens.length)
+			check = false;
+
+		else {
+			for (var i = 0; i < frontTokens.length; i++) {
+				if (frontTokens[i].name != newFrontTokens[i].name)
+					check = false;
+			}
+		}
+		return check;
+	}
+
+	this.eatFront = function(frontTokens) {
+		for (var i = 0; i < frontTokens.length; i++) {
+			if (this.currentToken.type == ">")
+				this.eat(">");
+			else if (this.currentToken.type == "tab")
+				this.eat("tab");
+			else if (this.currentToken.type == "4space")
+				this.eat("4space");
+			else if (this.currentToken.type == "number")
+				this.eat("number");
+			else if (this.currentToken.type == "-")
+				this.eat("-");
+			else if (this.currentToken.type == "+")
+				this.eat("+");
+			else if (this.currentToken.type == "*")
+				this.eat("*");
+			else if (this.currentToken.type == ".")
+				this.eat(".");
+
+			this.blankNoTab();
+		}
 	}
 
 	this.codeBlock = function(tokenIndex, frontTokens) {
@@ -148,43 +248,9 @@ function parser(inputArray) {
 
 		while(!breakBlock) {
 
-			var checkFront = true;
-			var peekLevel = 0;
-
-
-			for (var i = 0; i < frontTokens.length; i++) {
-				if (this.peekTokenType(peekLevel) == ">" && frontTokens[i].name == "blockquote")
-					peekLevel++;
-				else if (this.peekTokenType(peekLevel) == "tab" && frontTokens[i].name == "codeblock")
-					peekLevel++;
-				else if (this.peekTokenType(peekLevel) == "4space" && frontTokens[i].name == "codeblock")
-					peekLevel++;
-				else {
-					checkFront = false;
-					break;
-				}
-
-				var breakBlankLoop = false;
-				while (!breakBlankLoop) {
-					if (this.peekTokenType(peekLevel) == "space")
-						peekLevel++;
-					else
-						breakBlankLoop = true;
-				}
-			}
-
-			if (checkFront) {
-				for (var i = 0; i < frontTokens.length; i++) {
-					if (this.currentToken.type == ">")
-						this.eat(">");
-					else if (this.currentToken.type == "tab")
-						this.eat("tab");
-					else if (this.currentToken.type == "4space")
-						this.eat("4space");
-
-					this.blankNoTab();
-				}
-
+			var newFrontTokens = lineFrontCheck();
+			if (compareFront(frontTokens, newFrontTokens)) {
+				this.eatFront(frontTokens);	
 				node.children.push(this.codeLine());
 				if (globalDebug) console.log("'codeLine' rule returned");
 			}
@@ -219,10 +285,9 @@ function parser(inputArray) {
 	}
 
 	this.blockQuote = function(tokenStart, tokenIndex, inputFrontTokens) {
-		var frontTokens = inputFrontTokens;
 		if (globalDebug) console.log("'blockquote' rule called");
+		var frontTokens = inputFrontTokens;
 		var node = { type: "blockquote", children: [] };
-		if (globalDebug) console.log("'line' rule returned");
 		var breakBlock = false;
 
 		while (!breakBlock) {
