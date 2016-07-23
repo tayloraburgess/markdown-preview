@@ -32,13 +32,25 @@ function parser(inputArray) {
 			return null;
 	}
 
+	this.peekSpaces = function(peekLevel) {
+		var breakBlankLoop = false;
+		while (!breakBlankLoop) {
+			if (this.peekTokenType(peekLevel) == "space")
+				peekLevel++;
+			else
+				breakBlankLoop = true;
+		}
+	}
+
 	this.lineFrontCheck = function() {
 		var frontTokens = [];
 		var peekLevel = 0;
 		var oneList = false;
 
 		var frontTypes = [ ">", "*", "+", "-", "number", "tab", "4space" ];
-		var listTypes = [ "*", "+", "-"]
+		var listTypes = [ "*", "+", "-"];
+
+		this.peekSpaces(peekLevel);
 
 		while (frontTypes.indexOf(this.peekTokenType(peekLevel)) > -1) {
 
@@ -77,13 +89,7 @@ function parser(inputArray) {
 			else
 				break;
 
-			var breakBlankLoop = false;
-			while (!breakBlankLoop) {
-				if (this.peekTokenType(peekLevel) == "space")
-					peekLevel++;
-				else
-					breakBlankLoop = true;
-			}
+			this.peekSpaces(peekLevel);
 		}
 		return frontTokens;
 	}
@@ -162,11 +168,13 @@ function parser(inputArray) {
 				if (globalDebug) console.log("'line' rule returned");
 				var tempCheck = this.lineFrontCheck();
 				console.log(tempCheck.length);
+				console.log(tempCheck);
+				console.log(this.currentToken);
 
 				while (tempCheck.length == 0 && this.currentToken.type != "EOF") {
 					this.blankNoTab();
 					if (globalDebug) console.log("'blankNoTab' rule returned");
-					
+
 					pointNode.children.push(this.line());
 					if (globalDebug) console.log("'line' rule returned");
 					tempCheck = this.lineFrontCheck();
