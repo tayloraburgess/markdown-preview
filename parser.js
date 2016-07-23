@@ -44,12 +44,11 @@ function parser(inputArray) {
 
 	this.peekBlankLines = function(skipTokenNumber, numberLines) {
 		var peekLevel = 0;
-		var blankTokens = [ "space", "tab", "4space"];
 		var returnValue = true;
 		
 			for (var i = 0; i < numberLines; i++) {
 				peekLevel += skipTokenNumber;
-				while (blankTokens.indexOf(this.peekTokenType(peekLevel)) > -1) {
+				while (this.peekTokenType(peekLevel) == "space" || this.peekTokenType(peekLevel) == "tab") {
 					peekLevel++;
 				}
 
@@ -68,14 +67,14 @@ function parser(inputArray) {
 		var peekLevel = 0;
 		var oneList = false;
 
-		var frontTypes = [ ">", "*", "+", "-", "number", "tab", "4space" ];
+		var frontTypes = [ ">", "*", "+", "-", "number", "tab" ];
 		var listTypes = [ "*", "+", "-"];
 
 		this.peekSpaces(peekLevel);
 
 		while (frontTypes.indexOf(this.peekTokenType(peekLevel)) > -1) {
 
-			if (this.peekTokenType(peekLevel) == "tab" || this.peekTokenType(peekLevel) == "4space") {
+			if (this.peekTokenType(peekLevel) == "tab") {
 				frontTokens.push( { name: "tab", position: peekLevel } );
 				peekLevel++;
 			}
@@ -210,7 +209,7 @@ function parser(inputArray) {
 						this.blankLine();
 						if (globalDebug) console.log("'blankLine' rule returned");
 						console.log(this.currentToken.type);
-						if ((this.currentToken.type == "tab" || this.currentToken.type == "4space") && !failedParagraph) {
+						if (this.currentToken.type == "tab" && !failedParagraph) {
 							paragraphs = true;
 							newParagraph = true;
 
@@ -252,8 +251,7 @@ function parser(inputArray) {
 								break;
 							}
 						}
-						if (!breakLoop && (tempCheck[tempCheck.length - 1].name == "tab" || tempCheck[tempCheck.length - 1].name == "4space")) {
-							console.log("inside if");
+						if (!breakLoop && tempCheck[tempCheck.length - 1].name == "tab") {
 							if (newParagraph) {
 								newParagraph = false;
 								this.eatFront(tempCheck);
@@ -364,8 +362,6 @@ function parser(inputArray) {
 				this.eat(">");
 			else if (this.currentToken.type == "tab")
 				this.eat("tab");
-			else if (this.currentToken.type == "4space")
-				this.eat("4space");
 			else if (this.currentToken.type == "number")
 				this.eat("number");
 			else if (this.currentToken.type == "-")
@@ -388,9 +384,6 @@ function parser(inputArray) {
 
 		if (this.currentToken.type == "tab")
 			this.eat("tab");
-		else if (this.currentToken.type == "4space") {
-			this.eat("4space");z
-		}
 
 		node.children.push(this.codeLine());
 		if (globalDebug) console.log("'codeLine' rule returned");
@@ -475,7 +468,7 @@ function parser(inputArray) {
 					if (globalDebug) console.log("'blankNoTab' rule returned");
 				}
 
-				if (this.currentToken.type == "tab" || this.currentToken.type == "4space") {
+				if (this.currentToken.type == "tab") {
 					node.children.push(this.codeBlock(nestCheck + 1, frontTokens));
 					frontTokens = this.lineFrontCheck();
 					if (globalDebug) console.log("'codeblock' rule returned");
@@ -517,11 +510,6 @@ function parser(inputArray) {
 			this.blank();
 			if (globalDebug) console.log("'blank' rule returned");
 		}
-		if (this.currentToken.type == "4space") {
-			this.eat("4space");
-			this.blank();
-			if (globalDebug) console.log("'blank' rule returned");
-		}
 	}
 
 	this.blankNoTab = function() {
@@ -537,8 +525,7 @@ function parser(inputArray) {
 		if (globalDebug) console.log("'blankline' rule called");
 
 		var peekLevel = 0;
-		var blankTypes = [ "space", "tab", "4space" ];
-		while (blankTypes.indexOf(this.peekTokenType(peekLevel)) > -1)
+		while (this.peekTokenType(peekLevel) == "space" || this.peekTokenType(peekLevel) == "tab")
 			peekLevel++;
 
 		if (this.peekTokenType(peekLevel) == "newline") {

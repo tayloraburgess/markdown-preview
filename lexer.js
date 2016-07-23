@@ -46,7 +46,7 @@ function lexer(inputText) {
 					if (this.peek(2) == " ") {
 						if (this.peek(3) == " ") {
 							this.advance(4);
-							return new token ("4space");
+							return new token ("tab");
 						}
 					}
 				}
