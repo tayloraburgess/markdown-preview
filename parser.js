@@ -134,24 +134,6 @@ function parser(inputArray) {
 		}
 		return frontTokens;
 	}
-/*
-	this.checkFrontTokensFromFirst = function(frontTokens, type) {
-		for (var i = 0; i < frontTokens.length; i++) {
-			if (frontTokens[i].name == type)
-				return i;
-		}
-		return false;
-	}
-
-	this.checkFrontTokensFromLast = function(frontTokens, type) {
-		for (var i = frontTokens.length - 1; i > -1; i--) {
-			if (frontTokens[i].name == type)
-				return i;
-		}
-		return false;
-	}
-	*/
-
 
 	this.blocks = function() {
 		if (globalDebug) console.log("'blocks' rule called");
@@ -358,13 +340,16 @@ function parser(inputArray) {
 
 	}
 
-	this.compareFront = function(frontTokens, newFrontTokens) {
+	this.compareFront = function(frontTokens, newFrontTokens, tokenStart) {
+		if (tokenStart == undefined)
+			var tokenStart = frontTokens.length;
 		var check = true;
-		if (frontTokens.length != newFrontTokens.length)
+
+		if (tokenStart > newFrontTokens.length)
 			check = false;
 
 		else {
-			for (var i = 0; i < frontTokens.length; i++) {
+			for (var i = 0; i < tokenStart; i++) {
 				if (frontTokens[i].name != newFrontTokens[i].name)
 					check = false;
 			}
@@ -411,19 +396,10 @@ function parser(inputArray) {
 		while(!breakBlock) {
 
 			var newFrontTokens = this.lineFrontCheck();
-			if (newFrontTokens.length < frontTokens.length) {
-				breakBlock = true;
-			}
-			else {
-				for (var i = 0; i < tokenStart; i++) {
-					if (newFrontTokens[i].name != frontTokens[i].name) {
-						breakBlock = true;
-						break;
-					}
-				}
-			}
 
-			if (!breakBlock) {
+			if (!this.compareFront(frontTokens, newFrontTokens, tokenStart))
+				breakBlock = true;
+			else {
 				this.eatFront(frontTokens, tokenStart);	
 				node.children.push(this.codeLine());
 				if (globalDebug) console.log("'codeLine' rule returned");
