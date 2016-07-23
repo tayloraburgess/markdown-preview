@@ -155,12 +155,18 @@ function parser(inputArray) {
 				var pointNode = { type: "point", children: [] };
 				this.eatFront(frontTokens);
 
+				this.blankNoTab();
+				if (globalDebug) console.log("'blankNoTab' rule returned");
+
 				pointNode.children.push(this.line());
 				if (globalDebug) console.log("'line' rule returned");
 				var tempCheck = this.lineFrontCheck();
 				console.log(tempCheck.length);
 
 				while (tempCheck.length == 0 && this.currentToken.type != "EOF") {
+					this.blankNoTab();
+					if (globalDebug) console.log("'blankNoTab' rule returned");
+					
 					pointNode.children.push(this.line());
 					if (globalDebug) console.log("'line' rule returned");
 					tempCheck = this.lineFrontCheck();
