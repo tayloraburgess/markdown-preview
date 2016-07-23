@@ -189,6 +189,7 @@ function parser(inputArray) {
 				var pointHolder = [];
 				var paragraphs = false;
 				var newParagraph = false;
+				var failedParagraph = false;
 				this.eatFront(frontTokens);
 
 				this.blank();
@@ -205,10 +206,11 @@ function parser(inputArray) {
 						breakLoop = true;
 
 					else if (this.peekBlankLines(tokenIndex, 1) && !this.peekBlankLines(tokenIndex, 2)) {
-						
+
 						this.blankLine();
 						if (globalDebug) console.log("'blankLine' rule returned");
-						if (this.currentToken.type == "tab" || this.currentToken.type == "4space") {
+						console.log(this.currentToken.type);
+						if ((this.currentToken.type == "tab" || this.currentToken.type == "4space") && !failedParagraph) {
 							paragraphs = true;
 							newParagraph = true;
 
@@ -221,8 +223,10 @@ function parser(inputArray) {
 							pointHolder = [];
 							tempCheck = this.lineFrontCheck();
 						}
-						else
+						else {
 							tempCheck = this.lineFrontCheck();
+							failedParagraph = true;
+						}
 					}
 
 					else if (tempCheck.length == newFrontTokens.length - 1) {
@@ -257,7 +261,7 @@ function parser(inputArray) {
 						}
 					}
 
-					else
+					else 
 						breakLoop = true;
 
 					if (this.currentToken.type == "EOF")
@@ -382,8 +386,8 @@ function parser(inputArray) {
 
 		while(!breakBlock) {
 
-			var newFrontTokens = lineFrontCheck();
-			if (compareFront(frontTokens, newFrontTokens)) {
+			var newFrontTokens = this.lineFrontCheck();
+			if (this.compareFront(frontTokens, newFrontTokens)) {
 				this.eatFront(frontTokens);	
 				node.children.push(this.codeLine());
 				if (globalDebug) console.log("'codeLine' rule returned");
