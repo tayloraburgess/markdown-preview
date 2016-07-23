@@ -179,18 +179,18 @@ function parser(inputArray) {
 			}
 
 			else if (frontTokens[0].name == "list") {
-				node.children.push(this.list(0, 0, frontTokens));
+				node.children.push(this.list(0, frontTokens));
 				if (globalDebug) console.log("'list' rule returned");
 			}
 			else if (frontTokens[0].name == "orderedlist") {
-				node.children.push(this.orderedList(0, 1, frontTokens));
+				node.children.push(this.orderedList(0, frontTokens));
 				if (globalDebug) console.log("'orderedList' rule returned");
 			}
 		}	
 		return node;
 	}
 
-	this.list = function(tokenStart, tokenIndex, inputFrontTokens) {
+	this.list = function(tokenStart, inputFrontTokens) {
 		if (globalDebug) console.log("'list' rule called");
 		var frontTokens = inputFrontTokens;
 		var node = { type: "list", children: [] };
@@ -226,7 +226,7 @@ function parser(inputArray) {
 						if (globalDebug) console.log("'blankLine' rule returned");
 						var tempCheck = this.lineFrontCheck();
 						if (tempCheck.length >= newFrontTokens.length) {
-							if (tempCheck[tokenIndex].name == "tab" && !failedParagraph) {
+							if (tempCheck[tokenStart].name == "tab" && !failedParagraph) {
 								paragraphs = true;
 								newParagraph = true;
 
@@ -280,11 +280,11 @@ function parser(inputArray) {
 									if (globalDebug) console.log("'codeBlock' rule returned");
 								}
 								else if (tempCheck[tokenStart + 1].name == "list") {
-									pointHolder.push(this.list(tokenStart + 1, tokenIndex + 1, tempCheck));
+									pointHolder.push(this.list(tokenStart + 1, tempCheck));
 									if (globalDebug) console.log("'list' rule returned");
 								}
 								else if (tempCheck[tokenStart + 1].name == "orderedlist") {
-									pointHolder.push(this.orderedList(tokenStart + 1, tokenIndex + 2, tempCheck));
+									pointHolder.push(this.orderedList(tokenStart + 1, tempCheck));
 									if (globalDebug) console.log("'orderedList' rule returned");
 								}
 								else if (tempCheck[tokenStart + 1].name == "blockquote") {
@@ -352,7 +352,7 @@ function parser(inputArray) {
 		return node;
 	}
 
-	this.orderedList = function(tokenIndex, frontTokens) {
+	this.orderedList = function(tokenStart, inputFrontTokens) {
 
 	}
 
