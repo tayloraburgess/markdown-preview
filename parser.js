@@ -245,20 +245,33 @@ function parser(inputArray) {
 						}
 					}
 
-					else if (tempCheck.length == newFrontTokens.length && newParagraph) {
+					else if (tempCheck.length == newFrontTokens.length) {
 						for (var i = 0; i < tempCheck.length - 1; i++) {
 							if (tempCheck[i].name != newFrontTokens[i].name) {
-								break;
 								breakLoop = true;
+								break;
 							}
 						}
-						if (!breakLoop && tempCheck[tempCheck.length - 1].name == "tab") {
-							newParagraph = false;
-							this.eatFront(tempCheck);
-							pointHolder.push(this.line());
-							if (globalDebug) console.log("'line' rule returned");
-							tempCheck = this.lineFrontCheck();
+						if (!breakLoop && (tempCheck[tempCheck.length - 1].name == "tab" || tempCheck[tempCheck.length - 1].name == "4space")) {
+							console.log("inside if");
+							if (newParagraph) {
+								newParagraph = false;
+								this.eatFront(tempCheck);
+								pointHolder.push(this.line());
+								if (globalDebug) console.log("'line' rule returned");
+								tempCheck = this.lineFrontCheck();
+							}
+							else {
+								this.eatFront(tempCheck);
+								pointHolder.push(this.line());
+								if (globalDebug) console.log("'line' rule returned");
+								tempCheck = this.lineFrontCheck();
+							}
 						}
+						else {
+							breakLoop = true;
+						}
+
 					}
 
 					else 
