@@ -276,7 +276,9 @@ function parser(inputArray) {
 						if (!breakLoop && tempCheck[tokenStart].name == "tab") {
 							if (tempCheck.length > newFrontTokens.length) {
 								if (tempCheck[tokenStart + 1].name == "tab") {
-									pointHolder.push(this.codeBlock(tokenStart + 1, tempCheck));
+									console.log(tokenStart);
+									console.log(tempCheck);
+									pointHolder.push(this.codeBlock(tokenStart + 2, tempCheck));
 									if (globalDebug) console.log("'codeBlock' rule returned");
 								}
 								else if (tempCheck[tokenStart + 1].name == "list") {
@@ -352,7 +354,7 @@ function parser(inputArray) {
 		return node;
 	}
 
-	this.orderedList = function(tokenStart, inputFrontTokens) {
+	this.orderedList = function(tokenStart, inputfrontTokens) {
 
 	}
 
@@ -370,8 +372,11 @@ function parser(inputArray) {
 		return check;
 	}
 
-	this.eatFront = function(frontTokens) {
-		for (var i = 0; i < frontTokens.length; i++) {
+	this.eatFront = function(frontTokens, finalTokenIndex) {
+		if (finalTokenIndex == undefined)
+			var finalTokenIndex = frontTokens.length;
+
+		for (var i = 0; i < finalTokenIndex; i++) {
 			if (this.currentToken.type == ">")
 				this.eat(">");
 			else if (this.currentToken.type == "tab")
@@ -391,29 +396,38 @@ function parser(inputArray) {
 		}
 	}
 
-	this.codeBlock = function(tokenIndex, frontTokens) {
+	this.codeBlock = function(tokenStart, frontTokens) {
 		if (globalDebug) console.log("'codeBlock' rule called");
 		var node = { type: "codeblock", children: [] };
 		var breakBlock = false;
 
-		if (this.currentToken.type == "tab")
-			this.eat("tab");
-
+		this.eatFront(frontTokens, tokenStart);
 		node.children.push(this.codeLine());
 		if (globalDebug) console.log("'codeLine' rule returned");
+
 		if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
 			breakBlock = true;
 
 		while(!breakBlock) {
 
 			var newFrontTokens = this.lineFrontCheck();
-			if (this.compareFront(frontTokens, newFrontTokens)) {
-				this.eatFront(frontTokens);	
+			if (newFrontTokens.length < frontTokens.length) {
+				breakBlock = true;
+			}
+			else {
+				for (var i = 0; i < tokenStart; i++) {
+					if (newFrontTokens[i].name != frontTokens[i].name) {
+						breakBlock = true;
+						break;
+					}
+				}
+			}
+
+			if (!breakBlock) {
+				this.eatFront(frontTokens, tokenStart);	
 				node.children.push(this.codeLine());
 				if (globalDebug) console.log("'codeLine' rule returned");
 			}
-			else 
-				breakBlock = true;
 
 			if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
 				breakBlock = true;
