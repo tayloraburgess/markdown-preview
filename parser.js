@@ -181,7 +181,6 @@ function parser(inputArray) {
 		var node = { type: "list", children: [] };
 		var breakBlock = false;
 
-
 		while(!breakBlock) {
 			var newFrontTokens = this.lineFrontCheck();
 			if (this.compareFront(frontTokens, newFrontTokens)) {
@@ -190,13 +189,7 @@ function parser(inputArray) {
 				var paragraphs = false;
 				var newParagraph = false;
 				var failedParagraph = false;
-				this.eatFront(frontTokens);
 
-				this.blank();
-				if (globalDebug) console.log("'blank' rule returned");
-
-				pointHolder.push(this.line());
-				if (globalDebug) console.log("'line' rule returned");
 				var tempCheck = this.lineFrontCheck();
 				var breakLoop = false;
 
@@ -206,7 +199,6 @@ function parser(inputArray) {
 						breakLoop = true;
 
 					else if (this.peekBlankLines(newFrontTokens, 1) && !this.peekBlankLines(newFrontTokens, 2)) {
-
 						this.blankLine();
 						if (globalDebug) console.log("'blankLine' rule returned");
 						var tempCheck = this.lineFrontCheck();
@@ -252,13 +244,15 @@ function parser(inputArray) {
 					}
 
 					else if (tempCheck.length >= newFrontTokens.length) {
+
 						for (var i = 0; i < tokenStart; i++) {
 							if (tempCheck[i].name != newFrontTokens[i].name) {
 								breakLoop = true;
 								break;
 							}
 						}
-						if (!breakLoop && tempCheck[tokenStart].name == "tab") {
+
+						if (!breakLoop && tempCheck.length > tokenStart + 1 && tempCheck[tokenStart].name == "tab") {
 							if (tempCheck.length > newFrontTokens.length) {
 								if (tempCheck[tokenStart + 1].name == "tab") {
 									pointHolder.push(this.codeBlock(tokenStart + 2, tempCheck));
@@ -274,13 +268,13 @@ function parser(inputArray) {
 								}
 								else if (tempCheck[tokenStart + 1].name == "blockquote") {
 									var nestCheck = 0;
-									for (var i = 0; i < tempCheck.length; i++) {
+									for (var i = tokenStart + 2; i < tempCheck.length; i++) {
 										if (tempCheck[i].name == "blockquote")
 											nestCheck++;
 										else
 											break;
 									}
-									pointHolder.push(this.blockQuote(tokenStart + 1, nestCheck, tempCheck));
+									pointHolder.push(this.blockQuote(tokenStart + 1, nestCheck + tokenStart + 1, tempCheck));
 									if (globalDebug) console.log("'blockquote' rule returned");
 								}
 								tempCheck = this.lineFrontCheck();
@@ -299,18 +293,56 @@ function parser(inputArray) {
 								tempCheck = this.lineFrontCheck();
 							}
 						}
-						else {
-							breakLoop = true;
+						else if (!breakLoop && tempCheck.length > tokenStart + 2 && tempCheck[tokenStart].name == "list") {
+							if (tempCheck[tokenStart + 1].name == "tab") {
+								if (tempCheck[tokenStart + 2].name == "tab") {
+									pointHolder.push(this.codeBlock(tokenStart + 3, tempCheck));
+									if (globalDebug) console.log("'codeBlock' rule returned");
+								}
+								else if (tempCheck[tokenStart + 2].name == "list") {
+									pointHolder.push(this.list(tokenStart + 2, tempCheck));
+									if (globalDebug) console.log("'list' rule returned");
+								}
+								else if (tempCheck[tokenStart + 2].name == "orderedlist") {
+									pointHolder.push(this.orderedList(tokenStart + 2, tempCheck));
+									if (globalDebug) console.log("'orderedList' rule returned");
+								}
+								else if (tempCheck[tokenStart + 2].name == "blockquote") {
+									var nestCheck = 0;
+									for (var i = tokenStart + 3; i < tempCheck.length; i++) {
+										if (tempCheck[i].name == "blockquote")
+											nestCheck++;
+										else
+											break;
+									}
+									pointHolder.push(this.blockQuote(tokenStart + 2, nestCheck + tokenStart + 2, tempCheck));
+									if (globalDebug) console.log("'blockquote' rule returned");
+								}
+								else {
+									this.eatFront(tempCheck);
+									pointHolder.push(this.line());
+									if (globalDebug) console.log("'line' rule returned");
+									tempCheck = this.lineFrontCheck();
+								}
+								tempCheck = this.lineFrontCheck();
+							}
 						}
-
+						else {
+							this.eatFront(tempCheck);
+							pointHolder.push(this.line());
+							if (globalDebug) console.log("'line' rule returned");
+							tempCheck = this.lineFrontCheck();
+						}
 					}
-					else {
+					else
 						breakLoop = true;
-					}
-
 
 					if (this.currentToken.type == "EOF")
 						breakLoop = true;
+
+					if (!this.compareFront(newFrontTokens, tempCheck)) {
+						breakLoop = true;
+					}
 				}
 
 				if (paragraphs) {
@@ -352,7 +384,6 @@ function parser(inputArray) {
 					check = false;
 			}
 		}
-
 		return check;
 	}
 
@@ -385,7 +416,7 @@ function parser(inputArray) {
 		var node = { type: "codeblock", children: [] };
 		var breakBlock = false;
 
-		this.eatFront(frontTokens, tokenStart);
+		this.eatFront(frontTokens, tokenStart + 1);
 		node.children.push(this.codeLine());
 		if (globalDebug) console.log("'codeLine' rule returned");
 
@@ -399,7 +430,7 @@ function parser(inputArray) {
 			if (!this.compareFront(frontTokens, newFrontTokens, tokenStart))
 				breakBlock = true;
 			else {
-				this.eatFront(frontTokens, tokenStart);	
+				this.eatFront(frontTokens, tokenStart + 1);	
 				node.children.push(this.codeLine());
 				if (globalDebug) console.log("'codeLine' rule returned");
 			}
@@ -451,8 +482,8 @@ function parser(inputArray) {
 					break;
 			}
 
-			if (nestCheck > tokenIndex) {
-				node.children.push(this.blockQuote(tokenStart, nestCheck, frontTokens));
+			if (nestCheck + tokenStart > tokenIndex) {
+				node.children.push(this.blockQuote(tokenStart, tokenStart + nestCheck, frontTokens));
 				if (globalDebug) console.log("'blockquote' rule returned");
 				tempCheck = this.lineFrontCheck();
 
@@ -463,49 +494,61 @@ function parser(inputArray) {
 				}
 			}
 
-			else if (nestCheck < tokenIndex) {
+			else if (nestCheck + tokenStart < tokenIndex) {
 				breakBlock = true;
 			}
 
-			else if (nestCheck == tokenIndex) {
-
-				if (this.currentToken.type == "tab") {
-					node.children.push(this.codeBlock(tokenStart + nestCheck + 1, frontTokens));
-					if (globalDebug) console.log("'codeblock' rule returned");
-					frontTokens = this.lineFrontCheck();
+			else if (nestCheck + tokenStart == tokenIndex) {
+				if (tempCheck.length > tokenIndex + 1) {
+					if (tempCheck[tokenIndex + 1].name == "tab") {
+						node.children.push(this.codeBlock(tokenStart + nestCheck + 1, frontTokens));
+						if (globalDebug) console.log("'codeblock' rule returned");
+						frontTokens = this.lineFrontCheck();
+					}
+					else if (tempCheck[tokenIndex + 1].name == "list") {
+						node.children.push(this.list(tokenStart + nestCheck + 1, frontTokens));
+						if (globalDebug) console.log("'list' rule returned");
+						frontTokens = this.lineFrontCheck();
+					}
+					else if (tempCheck[tokenIndex + 1].name == "orderedlist") {
+						node.children.push(this.orderedList(tokenStart + nestCheck + 1, frontTokens));
+						if (globalDebug) console.log("'orderedlist' rule returned");
+						frontTokens = this.lineFrontCheck();
+					}
 				}
 				else {
 					this.eatFront(tempCheck, tokenStart + tokenIndex + 1);
 					node.children.push(this.line());
 					if (globalDebug) console.log("'line' rule returned");
 					tempCheck = this.lineFrontCheck();
-					var sliceFrontTokens = frontTokens.slice(0, -tokenIndex);
+		
+					var popFrontTokens = frontTokens.slice(tokenStart, tokenStart + tokenIndex + 1);
 
-					if (tempCheck.length == frontTokens.length - tokenIndex) {
-						var compareCheck = this.compareFront(sliceFrontTokens, tempCheck);
-					}
+					if (this.compareFront(frontTokens, tempCheck) || this.compareFront(popFrontTokens, tempCheck))
+						var compare = true;
 					else
-						var compareCheck = false;
+						var compare = false;
 
-					while (compareCheck && this.currentToken.type != "EOF") {
+					while (compare && this.currentToken.type != "EOF") {
 						this.eatFront(tempCheck, tokenStart + tokenIndex);
 						node.children.push(this.line());
 						if (globalDebug) console.log("'line' rule returned");
 
 						tempCheck = this.lineFrontCheck();
 
-						if (tempCheck.length == frontTokens.length - tokenIndex) {
-							compareCheck = this.compareFront(sliceFrontTokens, tempCheck);
+						if (this.compareFront(frontTokens, tempCheck) || this.compareFront(popFrontTokens, tempCheck)) {
+							compare = true;
 						}
 						else
-							compareCheck = false;
+							compare = false;
+
 					}
 				}
 
 				tempCheck = this.lineFrontCheck();
 
-				var sliceTempCheck = tempCheck.slice(0, tokenIndex);
-				var sliceFrontTokens = frontTokens.slice(0, tokenIndex);
+				var sliceTempCheck = tempCheck.slice(0, tokenStart + tokenIndex);
+				var sliceFrontTokens = frontTokens.slice(0, tokenStart + tokenIndex);
 
 				if (!this.compareFront(sliceFrontTokens, sliceTempCheck))
 					breakBlock = true;
