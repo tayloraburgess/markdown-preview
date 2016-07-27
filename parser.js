@@ -517,7 +517,7 @@ function parser(inputArray) {
 					}
 				}
 				else {
-					this.eatFront(tempCheck, tokenStart + tokenIndex + 1);
+					this.eatFront(tempCheck);
 					node.children.push(this.line());
 					if (globalDebug) console.log("'line' rule returned");
 					tempCheck = this.lineFrontCheck();
@@ -530,7 +530,7 @@ function parser(inputArray) {
 						var compare = false;
 
 					while (compare && this.currentToken.type != "EOF") {
-						this.eatFront(tempCheck, tokenStart + tokenIndex);
+						this.eatFront(tempCheck);
 						node.children.push(this.line());
 						if (globalDebug) console.log("'line' rule returned");
 
