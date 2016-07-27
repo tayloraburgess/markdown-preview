@@ -522,7 +522,7 @@ function parser(inputArray) {
 					if (globalDebug) console.log("'line' rule returned");
 					tempCheck = this.lineFrontCheck();
 		
-					var popFrontTokens = frontTokens.slice(tokenStart, tokenStart + tokenIndex + 1);
+					var popFrontTokens = frontTokens.splice(tokenStart, tokenIndex - tokenStart + 1);
 
 					if (this.compareFront(frontTokens, tempCheck) || this.compareFront(popFrontTokens, tempCheck))
 						var compare = true;
@@ -541,7 +541,6 @@ function parser(inputArray) {
 						}
 						else
 							compare = false;
-
 					}
 				}
 
@@ -558,8 +557,6 @@ function parser(inputArray) {
 					if (tempCheck[tokenStart].name == "blockquote")
 						breakBlock = false;
 				}
-
-
 			}
 		}
 		return node;
