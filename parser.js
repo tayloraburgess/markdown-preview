@@ -93,11 +93,11 @@ function parser(inputArray) {
 		while (frontTypes.indexOf(this.peekTokenType(peekLevel)) > -1) {
 
 			if (this.peekTokenType(peekLevel) == "tab") {
-				frontTokens.push( { name: "tab", position: peekLevel } );
+				frontTokens.push( { name: "tab"} );
 				peekLevel++;
 			}
 			else if (this.peekTokenType(peekLevel) == ">") {
-				frontTokens.push( { name: "blockquote", position: peekLevel } );
+				frontTokens.push( { name: "blockquote"} );
 				peekLevel++;
 			}
 			else if (listTypes.indexOf(this.peekTokenType(peekLevel)) > -1) {
@@ -105,7 +105,7 @@ function parser(inputArray) {
 					break;
 				else {
 					if (this.peekTokenType(peekLevel + 1) == "tab" || this.peekTokenType(peekLevel + 1) == "space") {
-						frontTokens.push( { name: "list", position: peekLevel } );
+						frontTokens.push( { name: "list"} );
 						oneList = true;
 						peekLevel += 2;
 					}
@@ -119,7 +119,7 @@ function parser(inputArray) {
 				else {
 					if (this.peekTokenType(peekLevel + 1) == ".") {
 						if (this.peekTokenType(peekLevel + 2) == "tab" || this.peekTokenType(peekLevel + 2) == "space") {
-							frontTokens.push( { name: "orderedlist", position: peekLevel } );
+							frontTokens.push( { name: "orderedlist"} );
 							oneList = true;
 							peekLevel += 3;
 						}
@@ -183,26 +183,27 @@ function parser(inputArray) {
 
 		while(!breakBlock) {
 			var newFrontTokens = this.lineFrontCheck();
-			if (this.compareFront(frontTokens, newFrontTokens)) {
+			if (newFrontTokens.length >= frontTokens.length) {
 				var pointNode = { type: "point", children: [] };
 				var pointHolder = [];
 				var paragraphs = false;
 				var newParagraph = false;
 				var failedParagraph = false;
+				var hitPoint = false;
 
 				var tempCheck = this.lineFrontCheck();
 				var breakLoop = false;
 
 				while (!breakLoop) {
-
-					if (this.peekBlankLines(newFrontTokens, 2))
+					if (this.peekBlankLines(frontTokens, 2))
 						breakLoop = true;
 
-					else if (this.peekBlankLines(newFrontTokens, 1) && !this.peekBlankLines(newFrontTokens, 2)) {
+					else if (this.peekBlankLines(frontTokens, 1) && !this.peekBlankLines(frontTokens, 2)) {
 						this.blankLine();
 						if (globalDebug) console.log("'blankLine' rule returned");
 						var tempCheck = this.lineFrontCheck();
-						if (tempCheck.length >= newFrontTokens.length) {
+
+						if (tempCheck.length >= frontTokens.length) {
 							if (tempCheck[tokenStart].name == "tab" && !failedParagraph) {
 								paragraphs = true;
 								newParagraph = true;
@@ -227,15 +228,15 @@ function parser(inputArray) {
 						}
 					}
 
-					else if (tempCheck.length == newFrontTokens.length - 1) {
+					else if (tempCheck.length == frontTokens.length - 1) {
 						for (var i = 0; i < tempCheck.length; i++) {
-							if (tempCheck[i].name != newFrontTokens[i].name) {
+							if (tempCheck[i].name != frontTokens[i].name) {
 								breakLoop = true;
 								break;
 							}
 						}
 						if (!breakLoop) {
-							this.eatFront(tempCheck);
+							this.eatFront(tempCheck);	
 
 							pointHolder.push(this.line());
 							if (globalDebug) console.log("'line' rule returned");
@@ -243,17 +244,16 @@ function parser(inputArray) {
 						}
 					}
 
-					else if (tempCheck.length >= newFrontTokens.length) {
+					else if (tempCheck.length >= frontTokens.length) {
 
 						for (var i = 0; i < tokenStart; i++) {
-							if (tempCheck[i].name != newFrontTokens[i].name) {
+							if (tempCheck[i].name != frontTokens[i].name) {
 								breakLoop = true;
 								break;
 							}
 						}
-
 						if (!breakLoop && tempCheck.length > tokenStart + 1 && tempCheck[tokenStart].name == "tab") {
-							if (tempCheck.length > newFrontTokens.length) {
+							if (tempCheck.length > frontTokens.length) {
 								if (tempCheck[tokenStart + 1].name == "tab") {
 									pointHolder.push(this.codeBlock(tokenStart + 2, tempCheck));
 									if (globalDebug) console.log("'codeBlock' rule returned");
@@ -277,19 +277,6 @@ function parser(inputArray) {
 									pointHolder.push(this.blockQuote(tokenStart + 1, nestCheck + tokenStart + 1, tempCheck));
 									if (globalDebug) console.log("'blockquote' rule returned");
 								}
-								tempCheck = this.lineFrontCheck();
-							}
-							else if (newParagraph) {
-								newParagraph = false;
-								this.eatFront(tempCheck);
-								pointHolder.push(this.line());
-								if (globalDebug) console.log("'line' rule returned");
-								tempCheck = this.lineFrontCheck();
-							}
-							else {
-								this.eatFront(tempCheck);
-								pointHolder.push(this.line());
-								if (globalDebug) console.log("'line' rule returned");
 								tempCheck = this.lineFrontCheck();
 							}
 						}
@@ -327,6 +314,25 @@ function parser(inputArray) {
 								tempCheck = this.lineFrontCheck();
 							}
 						}
+						else if (tempCheck[tokenStart].name == "list") {
+							if (hitPoint) {
+								breakLoop = true;
+							}
+							else {
+								this.eatFront(tempCheck);
+								pointHolder.push(this.line());
+								if (globalDebug) console.log("'line' rule returned");
+								tempCheck = this.lineFrontCheck();
+								hitPoint = true;
+							}
+						}
+						else if (newParagraph) {
+							newParagraph = false;
+							this.eatFront(tempCheck);
+							pointHolder.push(this.line());
+							if (globalDebug) console.log("'line' rule returned");
+							tempCheck = this.lineFrontCheck();
+						}
 						else {
 							this.eatFront(tempCheck);
 							pointHolder.push(this.line());
@@ -339,10 +345,6 @@ function parser(inputArray) {
 
 					if (this.currentToken.type == "EOF")
 						breakLoop = true;
-
-					if (!this.compareFront(newFrontTokens, tempCheck)) {
-						breakLoop = true;
-					}
 				}
 
 				if (paragraphs) {
@@ -359,9 +361,8 @@ function parser(inputArray) {
 
 				node.children.push(pointNode);				
 			}
-			else {
-				breakBlock = true;
-			}
+			 else
+			 	breakBlock = true;
 
 			if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
 				breakBlock = true;
