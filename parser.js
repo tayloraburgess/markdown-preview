@@ -184,16 +184,16 @@ function parser(inputArray) {
 				this.eat(">");
 			else if (this.currentToken.type == "tab")
 				this.eat("tab");
-			else if (this.currentToken.type == "number")
+			else if (this.currentToken.type == "number") {
 				this.eat("number");
+				this.eat(".");
+			}
 			else if (this.currentToken.type == "-")
 				this.eat("-");
 			else if (this.currentToken.type == "+")
 				this.eat("+");
 			else if (this.currentToken.type == "*")
 				this.eat("*");
-			else if (this.currentToken.type == ".")
-				this.eat(".");
 
 			this.blankNoTab();
 		}
@@ -230,21 +230,28 @@ function parser(inputArray) {
 			}
 
 			else if (frontTokens[0].name == "list") {
-				node.children.push(this.list(0, frontTokens));
+				node.children.push(this.list(0, frontTokens, "unordered"));
 				if (globalDebug) console.log("'list' rule returned");
 			}
 			else if (frontTokens[0].name == "orderedlist") {
-				node.children.push(this.orderedList(0, frontTokens));
-				if (globalDebug) console.log("'orderedList' rule returned");
+				node.children.push(this.list(0, frontTokens, "ordered"));
+				if (globalDebug) console.log("'list' rule returned");
 			}
 		}	
 		return node;
 	}
 
-	this.list = function(tokenStart, inputFrontTokens) {
+	this.list = function(tokenStart, inputFrontTokens, listType) {
 		if (globalDebug) console.log("'list' rule called");
 		var frontTokens = inputFrontTokens;
-		var node = { type: "list", children: [] };
+		if (listType == "unordered") {
+			var node = { type: "unorderedlist", children: [] };
+			var listTokenType = "list";
+		}
+		else if (listType == "ordered") {
+			var node = { type: "orderedlist", children: [] };
+			var listTokenType = "orderedlist"
+		}
 		var breakBlock = false;
 
 		while(!breakBlock) {
@@ -325,11 +332,11 @@ function parser(inputArray) {
 									if (globalDebug) console.log("'codeBlock' rule returned");
 								}
 								else if (tempCheck[tokenStart + 1].name == "list") {
-									pointHolder.push(this.list(tokenStart + 1, tempCheck));
+									pointHolder.push(this.list(tokenStart + 1, tempCheck, "unordered"));
 									if (globalDebug) console.log("'list' rule returned");
 								}
 								else if (tempCheck[tokenStart + 1].name == "orderedlist") {
-									pointHolder.push(this.orderedList(tokenStart + 1, tempCheck));
+									pointHolder.push(this.orderedList(tokenStart + 1, tempCheck, "ordered"));
 									if (globalDebug) console.log("'orderedList' rule returned");
 								}
 								else if (tempCheck[tokenStart + 1].name == "blockquote") {
@@ -346,18 +353,18 @@ function parser(inputArray) {
 								tempCheck = this.lineFrontCheck();
 							}
 						}
-						else if (!breakLoop && tempCheck.length > tokenStart + 2 && tempCheck[tokenStart].name == "list") {
+						else if (!breakLoop && tempCheck.length > tokenStart + 2 && tempCheck[tokenStart].name == listTokenType) {
 							if (tempCheck[tokenStart + 1].name == "tab") {
 								if (tempCheck[tokenStart + 2].name == "tab") {
 									pointHolder.push(this.codeBlock(tokenStart + 3, tempCheck));
 									if (globalDebug) console.log("'codeBlock' rule returned");
 								}
 								else if (tempCheck[tokenStart + 2].name == "list") {
-									pointHolder.push(this.list(tokenStart + 2, tempCheck));
+									pointHolder.push(this.list(tokenStart + 2, tempCheck, "unordered"));
 									if (globalDebug) console.log("'list' rule returned");
 								}
 								else if (tempCheck[tokenStart + 2].name == "orderedlist") {
-									pointHolder.push(this.orderedList(tokenStart + 2, tempCheck));
+									pointHolder.push(this.orderedList(tokenStart + 2, tempCheck, "ordered"));
 									if (globalDebug) console.log("'orderedList' rule returned");
 								}
 								else if (tempCheck[tokenStart + 2].name == "blockquote") {
@@ -380,7 +387,7 @@ function parser(inputArray) {
 								tempCheck = this.lineFrontCheck();
 							}
 						}
-						else if (tempCheck[tokenStart].name == "list") {
+						else if (tempCheck[tokenStart].name == listTokenType) {
 							if (hitPoint) {
 								breakLoop = true;
 							}
@@ -436,10 +443,6 @@ function parser(inputArray) {
 		return node;
 	}
 
-	this.orderedList = function(tokenStart, inputfrontTokens) {
-
-	}
-
 	this.blockQuote = function(tokenStart, tokenIndex, inputFrontTokens) {
 		if (globalDebug) console.log("'blockquote' rule called");
 		var frontTokens = inputFrontTokens;
@@ -484,12 +487,12 @@ function parser(inputArray) {
 						frontTokens = this.lineFrontCheck();
 					}
 					else if (tempCheck[tokenIndex + 1].name == "list") {
-						node.children.push(this.list(tokenStart + nestCheck + 1, frontTokens));
+						node.children.push(this.list(tokenStart + nestCheck + 1, frontTokens, "unordered"));
 						if (globalDebug) console.log("'list' rule returned");
 						frontTokens = this.lineFrontCheck();
 					}
 					else if (tempCheck[tokenIndex + 1].name == "orderedlist") {
-						node.children.push(this.orderedList(tokenStart + nestCheck + 1, frontTokens));
+						node.children.push(this.orderedList(tokenStart + nestCheck + 1, frontTokens, "ordered"));
 						if (globalDebug) console.log("'orderedlist' rule returned");
 						frontTokens = this.lineFrontCheck();
 					}
