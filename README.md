@@ -1,6 +1,6 @@
 # Markdown Preview
 
-Utility that interprets markdown (as per John Gruber's [original spec](http://daringfireball.net/projects/markdown/)) and interprets it.
+Utility that interprets markdown as per John Gruber's [original spec](http://daringfireball.net/projects/markdown/)).
 
 Currently only outputs an AST to the console, but support for HTML compilation & and interface to come.
 
