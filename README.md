@@ -1,19 +1,10 @@
 # Markdown Preview
 
-Command line utility that takes a markdown file as input, analyses it, and outputs HTML to a local HTTP server. Built primarily as a way to learn the basics of interpreters.
+Utility that interprets markdown (as per John Gruber's [original spec](http://daringfireball.net/projects/markdown/)) and interprets it.
+
+Currently only outputs an AST to the console, but support for HTML compilation & and interface to come.
 
 - Currenty Inteprets:
-	- Line Breaks
-	- Escape Characters ("\\")
-	- Both styles of emphasis ("\*", "\*\*", "\_", "\_\_")
-	- Setext & atx-style headers
-- To Be Added:
-	- Inline HTML
-	- Escape Special HTML characters
 	- Blockquotes
-	- Lists
-	- Code Blocks & Spans
-	- Horizontal Rules
-	- Links (including auto)
-	- Images
-	- Closing hashesq for atx headers
+	- Ordered & Unordered Lists
+	- Code Blocks
