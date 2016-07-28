@@ -10,6 +10,10 @@ function parser(inputArray) {
 		throw "Invalid syntax";
 	}
 
+	// * Basic Parser Functions *
+	//
+	// Get new tokens, eat tokens, parse tokens, etc.
+
 	this.getNextToken = function() {
 		this.position++;
 		return this.tokenArray[this.position - 1];
@@ -24,6 +28,15 @@ function parser(inputArray) {
 			this.error();
 	}
 
+	this.parse = function() {
+		var node = this.blocks();
+
+		if (this.currentToken.type != "EOF")
+			this.error();
+
+		return node;
+	}
+
 	this.peekTokenType = function(advancePosition) {
 		if (this.position + (advancePosition - 1) < this.tokenArray.length)
 			return this.tokenArray[this.position + (advancePosition - 1)].type;
@@ -31,6 +44,10 @@ function parser(inputArray) {
 		else
 			return null;
 	}
+
+	// * Peek Functions *
+	//
+	// Look ahead at tokens without eating them
 
 	this.peekSpaces = function(peekLevel) {
 		var breakBlankLoop = false;
@@ -79,6 +96,12 @@ function parser(inputArray) {
 			}
 			return returnValue;
 	}
+
+	// * Front Tokens Functions *
+	//
+	// Return standard arrays of block-level tokens
+	// at the front of lines, and functions
+	// to analyze/eat those tokens
 
 	this.lineFrontCheck = function() {
 		var frontTokens = [];
@@ -137,6 +160,49 @@ function parser(inputArray) {
 		}
 		return frontTokens;
 	}
+
+	this.compareFront = function(frontTokens, newFrontTokens) {
+		var check = true;
+
+		if (newFrontTokens.length != frontTokens.length)
+			check = false;
+		else {
+			for (var i = 0; i < frontTokens.length; i++) {
+				if (frontTokens[i].name != newFrontTokens[i].name)
+					check = false;
+			}
+		}
+		return check;
+	}
+
+	this.eatFront = function(frontTokens, eatLength) {
+		if (eatLength == undefined)
+			var eatLength = frontTokens.length;
+
+		for (var i = 0; i < eatLength; i++) {
+			if (this.currentToken.type == ">")
+				this.eat(">");
+			else if (this.currentToken.type == "tab")
+				this.eat("tab");
+			else if (this.currentToken.type == "number")
+				this.eat("number");
+			else if (this.currentToken.type == "-")
+				this.eat("-");
+			else if (this.currentToken.type == "+")
+				this.eat("+");
+			else if (this.currentToken.type == "*")
+				this.eat("*");
+			else if (this.currentToken.type == ".")
+				this.eat(".");
+
+			this.blankNoTab();
+		}
+	}
+
+	// * Block Level Rules *
+	//
+	// Rules that process blockquotes, list,
+	// and codeblocks
 
 	this.blocks = function() {
 		if (globalDebug) console.log("'blocks' rule called");
@@ -374,95 +440,6 @@ function parser(inputArray) {
 
 	}
 
-	this.compareFront = function(frontTokens, newFrontTokens) {
-		var check = true;
-
-		if (newFrontTokens.length != frontTokens.length)
-			check = false;
-		else {
-			for (var i = 0; i < frontTokens.length; i++) {
-				if (frontTokens[i].name != newFrontTokens[i].name)
-					check = false;
-			}
-		}
-		return check;
-	}
-
-	this.eatFront = function(frontTokens, eatLength) {
-		if (eatLength == undefined)
-			var eatLength = frontTokens.length;
-
-		for (var i = 0; i < eatLength; i++) {
-			if (this.currentToken.type == ">")
-				this.eat(">");
-			else if (this.currentToken.type == "tab")
-				this.eat("tab");
-			else if (this.currentToken.type == "number")
-				this.eat("number");
-			else if (this.currentToken.type == "-")
-				this.eat("-");
-			else if (this.currentToken.type == "+")
-				this.eat("+");
-			else if (this.currentToken.type == "*")
-				this.eat("*");
-			else if (this.currentToken.type == ".")
-				this.eat(".");
-
-			this.blankNoTab();
-		}
-	}
-
-	this.codeBlock = function(tokenStart, frontTokens) {
-		if (globalDebug) console.log("'codeBlock' rule called");
-		var node = { type: "codeblock", children: [] };
-		var breakBlock = false;
-
-		this.eatFront(frontTokens, tokenStart + 1);
-		node.children.push(this.codeLine());
-		if (globalDebug) console.log("'codeLine' rule returned");
-
-		if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
-			breakBlock = true;
-
-		while(!breakBlock) {
-
-			var newFrontTokens = this.lineFrontCheck();
-
-			if (!this.compareFront(frontTokens, newFrontTokens, tokenStart))
-				breakBlock = true;
-			else {
-				this.eatFront(frontTokens, tokenStart + 1);	
-				node.children.push(this.codeLine());
-				if (globalDebug) console.log("'codeLine' rule returned");
-			}
-
-			if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
-				breakBlock = true;
-		}
-		return node;
-	}
-
-	this.codeLine = function() {
-		if (globalDebug) console.log("'codeLine' rule called");
-		var node = { type: "codeline", children: [] };
-		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
-
-			if (this.currentToken.type == "space")
-				node.children.push(" ");
-			else if (this.currentToken.type == "tab")
-				node.children.push("	");
-			else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
-				node.children.push(this.currentToken.value);
-			else
-				node.children.push(this.currentToken.type);
-
-			this.currentToken = this.getNextToken();
-		}
-		if (this.currentToken.type == "newline")
-			this.eat("newline");
-		return node;
-	}
-
 	this.blockQuote = function(tokenStart, tokenIndex, inputFrontTokens) {
 		if (globalDebug) console.log("'blockquote' rule called");
 		var frontTokens = inputFrontTokens;
@@ -563,6 +540,105 @@ function parser(inputArray) {
 		return node;
 	}
 
+	this.codeBlock = function(tokenStart, frontTokens) {
+		if (globalDebug) console.log("'codeBlock' rule called");
+		var node = { type: "codeblock", children: [] };
+		var breakBlock = false;
+
+		this.eatFront(frontTokens, tokenStart + 1);
+		node.children.push(this.codeLine());
+		if (globalDebug) console.log("'codeLine' rule returned");
+
+		if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
+			breakBlock = true;
+
+		while(!breakBlock) {
+
+			var newFrontTokens = this.lineFrontCheck();
+
+			if (!this.compareFront(frontTokens, newFrontTokens, tokenStart))
+				breakBlock = true;
+			else {
+				this.eatFront(frontTokens, tokenStart + 1);	
+				node.children.push(this.codeLine());
+				if (globalDebug) console.log("'codeLine' rule returned");
+			}
+
+			if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
+				breakBlock = true;
+		}
+		return node;
+	}
+
+	// * Line Rules *
+	//
+	// Rules to parse different types of lines
+
+	this.line = function() {
+		if (globalDebug) console.log("'line' rule called");
+		var node = { type: "line", children: [] };
+		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
+
+			if (this.currentToken.type == "space")
+				node.children.push(" ");
+			else if (this.currentToken.type == "tab")
+				node.children.push("\t");
+			else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
+				node.children.push(this.currentToken.value);
+			else
+				node.children.push(this.currentToken.type);
+
+			this.currentToken = this.getNextToken();
+		}
+		if (this.currentToken.type == "newline")
+			this.eat("newline");
+		return node;
+	}
+
+	this.codeLine = function() {
+		if (globalDebug) console.log("'codeLine' rule called");
+		var node = { type: "codeline", children: [] };
+		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
+
+			if (this.currentToken.type == "space")
+				node.children.push(" ");
+			else if (this.currentToken.type == "tab")
+				node.children.push("	");
+			else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
+				node.children.push(this.currentToken.value);
+			else
+				node.children.push(this.currentToken.type);
+
+			this.currentToken = this.getNextToken();
+		}
+		if (this.currentToken.type == "newline")
+			this.eat("newline");
+		return node;
+	}
+
+	this.blankLine = function() {
+		if (globalDebug) console.log("'blankline' rule called");
+
+		var peekLevel = 0;
+		while (this.peekTokenType(peekLevel) == "space" || this.peekTokenType(peekLevel) == "tab" || this.peekTokenType(peekLevel) == ">")
+			peekLevel++;
+
+		if (this.peekTokenType(peekLevel) == "newline") {
+			this.blankWithBlockQuote();	
+			if (globalDebug) console.log("'blank' rule returned");
+			if (this.currentToken.type == "newline") {
+				this.eat("newline");
+				this.blankLine();
+				if (globalDebug) console.log("'blankline' rule returned");
+			}
+		}
+	}
+
+	// * Line-Level Rules *
+	//
+	// Rules to process elements tokens
+	// on the individual line level
+
 	this.blank = function() {
 		if (globalDebug) console.log("'blank' rule called");
 		if (this.currentToken.type == "space") {
@@ -603,54 +679,6 @@ function parser(inputArray) {
 			this.blankNoTab();
 			if (globalDebug) console.log("'blankNoTab' rule returned");
 		}
-	}
-
-	this.blankLine = function() {
-		if (globalDebug) console.log("'blankline' rule called");
-
-		var peekLevel = 0;
-		while (this.peekTokenType(peekLevel) == "space" || this.peekTokenType(peekLevel) == "tab" || this.peekTokenType(peekLevel) == ">")
-			peekLevel++;
-
-		if (this.peekTokenType(peekLevel) == "newline") {
-			this.blankWithBlockQuote();	
-			if (globalDebug) console.log("'blank' rule returned");
-			if (this.currentToken.type == "newline") {
-				this.eat("newline");
-				this.blankLine();
-				if (globalDebug) console.log("'blankline' rule returned");
-			}
-		}
-	}
-
-	this.line = function() {
-		if (globalDebug) console.log("'line' rule called");
-		var node = { type: "line", children: [] };
-		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
-
-			if (this.currentToken.type == "space")
-				node.children.push(" ");
-			else if (this.currentToken.type == "tab")
-				node.children.push("\t");
-			else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
-				node.children.push(this.currentToken.value);
-			else
-				node.children.push(this.currentToken.type);
-
-			this.currentToken = this.getNextToken();
-		}
-		if (this.currentToken.type == "newline")
-			this.eat("newline");
-		return node;
-	}
-
-	this.parse = function() {
-		var node = this.blocks();
-
-		if (this.currentToken.type != "EOF")
-			this.error();
-
-		return node;
 	}
 }
 
