@@ -262,32 +262,54 @@ function parser(inputArray) {
 			if (globalDebug) console.log("'blankLine' rule returned");
 			var frontTokens = this.lineFrontCheck();
 
-			if (frontTokens[0].name == "tab") {
-				node.children.push(this.codeBlock(0, frontTokens));
-				if (globalDebug) console.log("'codeBlock' rule returned");
-			}
-
-			else if (frontTokens[0].name == "blockquote") {
-				var nestCheck = 0;
-				for (var i = 1; i < frontTokens.length; i++) {
-					if (frontTokens[i].name == "blockquote")
-						nestCheck++;
-					else
-						break;
+			if (frontTokens.length > 0) {
+				if (frontTokens[0].name == "tab") {
+					node.children.push(this.codeBlock(0, frontTokens));
+					if (globalDebug) console.log("'codeBlock' rule returned");
 				}
-				node.children.push(this.blockQuote(0, nestCheck, frontTokens));
-				if (globalDebug) console.log("'blockquote' rule returned");
-			}
 
-			else if (frontTokens[0].name == "list") {
-				node.children.push(this.list(0, frontTokens, "unordered"));
-				if (globalDebug) console.log("'list' rule returned");
+				else if (frontTokens[0].name == "blockquote") {
+					var nestCheck = 0;
+					for (var i = 1; i < frontTokens.length; i++) {
+						if (frontTokens[i].name == "blockquote")
+							nestCheck++;
+						else
+							break;
+					}
+					node.children.push(this.blockQuote(0, nestCheck, frontTokens));
+					if (globalDebug) console.log("'blockquote' rule returned");
+				}
+
+				else if (frontTokens[0].name == "list") {
+					node.children.push(this.list(0, frontTokens, "unordered"));
+					if (globalDebug) console.log("'list' rule returned");
+				}
+				else if (frontTokens[0].name == "orderedlist") {
+					node.children.push(this.list(0, frontTokens, "ordered"));
+					if (globalDebug) console.log("'list' rule returned");
+				}
 			}
-			else if (frontTokens[0].name == "orderedlist") {
-				node.children.push(this.list(0, frontTokens, "ordered"));
-				if (globalDebug) console.log("'list' rule returned");
+			else {
+				node.children.push(this.paragraph());
+				if (globalDebug) console.log("'paragraph' rule returned");
 			}
 		}	
+		return node;
+	}
+
+	this.paragraph = function() {
+		if (globalDebug) console.log("'paragraph' rule called");
+
+		var node = { type: "paragraph", children: [] };
+		var frontTokens = this.lineFrontCheck();
+
+		while (this.currentToken.type != "EOF" && this.currentToken.type != "newline" && frontTokens.length == 0) {
+			node.children.push(this.line());
+			if (globalDebug) console.log("'line' rule returned");
+
+			frontTokens = this.lineFrontCheck();
+		}
+
 		return node;
 	}
 
