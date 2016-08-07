@@ -97,6 +97,56 @@ function parser(inputArray) {
 			return returnValue;
 	}
 
+	function peekLine() {
+		var peekLevel = 0;
+		var checkString = "";
+		var rules = {};
+		while (this.peekTokenType(peekLevel) != "newline" && this.peekTokenType(peekLevel != "EOF")) {
+			if (this.currentToken.type == "space")
+				checkString += " ";
+			else if (this.currentToken.type == "tab")
+				checkString += "\t";
+			else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
+				checkString += this.currentToken.value;
+			else
+				checkString += this.currentToken.type;
+		}
+		var emphasis1 = /\*.*\*/;
+		var emphasis2 = /_.*_/;
+		var strong1 = /\*\*.*\*\*/;
+		var strong2 = /__.*__/;
+
+		var position = 0;
+		while (position > -1) {
+			var position = checkString.substr(position + 1).search(emphasis1);
+			if (position > -1)
+				rules[position] = "emphasis";
+		}
+
+		var position = 0;
+		while (position > -1) {
+			var position = checkString.substr(position + 1).search(emphasis2);
+			if (position > -1)
+				rules[position] = "emphasis";
+		}
+
+		var position = 0;
+		while (position > -1) {
+			var position = checkString.substr(position + 1).search(strong1);
+			if (position > -1)
+				rules[position] = "strong";
+		}
+
+		var position = 0;
+		while (position > -1) {
+			var position = checkString.substr(position + 1).search(strong2);
+			if (position > -1)
+				rules[position] = "strong";
+		}
+
+		return rules;
+	}
+
 	// * Front Tokens Functions *
 	//
 	// Return standard arrays of block-level tokens
