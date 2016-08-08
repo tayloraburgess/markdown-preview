@@ -111,7 +111,7 @@ function parser(inputArray) {
 		var rules = {};
 		var relativeIndex = {};
 		while (this.peekTokenType(peekLevel) != "newline" && this.peekTokenType(peekLevel) != "EOF") {
-			relativeIndex[checkString.length] = peekLevel;
+			relativeIndex[checkString.length] = peekLevel + this.position;
 			if (this.peekTokenType(peekLevel) == "space")
 				checkString += " ";
 			else if (this.peekTokenType(peekLevel) == "tab")
@@ -128,35 +128,33 @@ function parser(inputArray) {
 		var strong1 = /\*\*(?!\*).?[^\*]+\*\*(?!\*)/;
 		var strong2 = /__(?!_).?[^_]+__(?!_)/;
 
-		var position = -1;
+		var checkPosition = -1;
 		do {
-			var position = checkString.substr(position + 1).search(emphasis1);
-			if (position > -1) {
-				console.log(position);
-				rules[relativeIndex[position]] = "emphasis";
-			}
-		} while (position > -1);
+			var checkPosition = checkString.substr(checkPosition + 1).search(emphasis1);
+			if (checkPosition > -1)
+				rules[relativeIndex[checkPosition]] = "emphasis";
+		} while (checkPosition > -1);
 
-		var position = -1;
+		var checkPosition = -1;
 		do {
-			var position = checkString.substr(position + 1).search(emphasis2);
-			if (position > -1)
-				rules[relativeIndex[position]] = "emphasis";
-		} while (position > -1);
+			var checkPosition = checkString.substr(checkPosition + 1).search(emphasis2);
+			if (checkPosition > -1)
+				rules[relativeIndex[checkPosition]] = "emphasis";
+		} while (checkPosition > -1);
 
-		var position = -1;
+		var checkPosition = -1;
 		do {
-			var position = checkString.substr(position + 1).search(strong1);
-			if (position > -1)
-				rules[relativeIndex[position]] = "strong";
-		} while (position > -1);
+			var checkPosition = checkString.substr(checkPosition + 1).search(strong1);
+			if (checkPosition > -1)
+				rules[relativeIndex[checkPosition]] = "strong";
+		} while (checkPosition > -1);
 
-		var position = -1;
+		var checkPosition = -1;
 		do {
-			var position = checkString.substr(position + 1).search(strong2);
-			if (position > -1)
-				rules[relativeIndex[position]] = "strong";
-		} while (position > -1);
+			var checkPosition = checkString.substr(checkPosition + 1).search(strong2);
+			if (checkPosition > -1)
+				rules[relativeIndex[checkPosition]] = "strong";
+		} while (checkPosition > -1);
 
 		return rules;
 	}
@@ -665,20 +663,32 @@ function parser(inputArray) {
 
 	this.line = function() {
 		if (globalDebug) console.log("'line' rule called");
-		console.log(this.peekLine());
+		var checkRules = this.peekLine();
 		var node = { type: "line", children: [] };
 		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
 
-			if (this.currentToken.type == "space")
-				node.children.push(" ");
-			else if (this.currentToken.type == "tab")
-				node.children.push("\t");
-			else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
-				node.children.push(this.currentToken.value);
-			else
-				node.children.push(this.currentToken.type);
+			if (this.position in checkRules) {
+				if (checkRules[this.position] == "emphasis") {
+					node.children.push(this.emphasis(checkRules));
+					if (globalDebug) console.log("'emphasis' rule returned");
+				}
+				else if (checkRules[this.position] == "strong") {
+					node.children.push(this.strong(checkRules));
+					if (globalDebug) console.log("'strong' rule returned");
+				}
+			}
+			else {
+				if (this.currentToken.type == "space")
+					node.children.push(" ");
+				else if (this.currentToken.type == "tab")
+					node.children.push("\t");
+				else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
+					node.children.push(this.currentToken.value);
+				else
+					node.children.push(this.currentToken.type);
 
-			this.currentToken = this.getNextToken();
+				this.currentToken = this.getNextToken();
+			}
 		}
 		if (this.currentToken.type == "newline")
 			this.eat("newline");
@@ -728,6 +738,82 @@ function parser(inputArray) {
 	//
 	// Rules to process elements tokens
 	// on the individual line level
+
+	this.subLine = function(rules, endType) {
+		if (globalDebug) console.log("'subLine' rule called");
+		var checkRules = rules;
+		var node = { type: "subline", children: [] };
+		while (this.currentToken.type != endType && this.currentToken.type != "EOF") {
+
+			if (this.position in checkRules) {
+				if (checkRules[checkRules['index']] == "emphasis") {
+					node.children.push(this.emphasis(checkRules));
+					if (globalDebug) console.log("'emphasis' rule returned");
+				}
+				else if (checkRules[checkRules['index']] == "strong") {
+					node.children.push(this.strong(checkRules));
+					if (globalDebug) console.log("'strong' rule returned");
+				}
+			}
+			else {
+				if (this.currentToken.type == "space")
+					node.children.push(" ");
+				else if (this.currentToken.type == "tab")
+					node.children.push("\t");
+				else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
+					node.children.push(this.currentToken.value);
+				else
+					node.children.push(this.currentToken.type);
+
+				this.currentToken = this.getNextToken();
+			}
+		}
+		return node;
+	}
+
+	this.emphasis = function(rules) {
+		if (globalDebug) console.log("'emphasis' rule called");
+		var checkRules = rules;
+		var node = { type: "emphasis", children: [] };
+		if (this.currentToken.type == "*") {
+			this.eat("*");
+			node.children.push(this.subLine(checkRules, "*"));
+			if (globalDebug) console.log("'subLine' rule called");
+			this.eat("*");
+		}
+		else if (this.currentToken.type == "_") {
+			this.eat("_");
+			node.children.push(this.subLine(checkRules, "_"));
+			if (globalDebug) console.log("'subLine' rule called");
+			this.eat("_");
+		}
+
+		return node;
+	}
+
+	this.strong = function(rules) {
+		if (globalDebug) console.log("'strong' rule called");
+		var checkRules = rules;
+		var node = { type: "strong", children: [] };
+		if (this.currentToken.type == "*") {
+			this.eat("*");
+			this.eat("*");
+			node.children.push(this.subLine(checkRules, "*"));
+			if (globalDebug) console.log("'subLine' rule called");
+			this.eat("*");
+			this.eat("*");
+		}
+		else if (this.currentToken.type == "_") {
+			this.eat("_");
+			this.eat("_");
+			node.children.push(this.subLine(checkRules, "_"));
+			if (globalDebug) console.log("'subLine' rule called");
+			this.eat("_");
+			this.eat("_");
+		}
+
+		return node;
+	}
 
 	this.blank = function() {
 		if (globalDebug) console.log("'blank' rule called");
