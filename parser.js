@@ -45,6 +45,14 @@ function parser(inputArray) {
 			return null;
 	}
 
+	this.peekTokenValue= function(advancePosition) {
+		if (this.position + (advancePosition - 1) < this.tokenArray.length)
+			return this.tokenArray[this.position + (advancePosition - 1)].value;
+
+		else
+			return null;
+	}
+
 	// * Peek Functions *
 	//
 	// Look ahead at tokens without eating them
@@ -97,52 +105,58 @@ function parser(inputArray) {
 			return returnValue;
 	}
 
-	function peekLine() {
+	this.peekLine = function() {
 		var peekLevel = 0;
 		var checkString = "";
 		var rules = {};
-		while (this.peekTokenType(peekLevel) != "newline" && this.peekTokenType(peekLevel != "EOF")) {
-			if (this.currentToken.type == "space")
+		var relativeIndex = {};
+		while (this.peekTokenType(peekLevel) != "newline" && this.peekTokenType(peekLevel) != "EOF") {
+			relativeIndex[checkString.length] = peekLevel;
+			if (this.peekTokenType(peekLevel) == "space")
 				checkString += " ";
-			else if (this.currentToken.type == "tab")
+			else if (this.peekTokenType(peekLevel) == "tab")
 				checkString += "\t";
-			else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
-				checkString += this.currentToken.value;
+			else if (this.peekTokenType(peekLevel) == "plaintext" || this.peekTokenType(peekLevel) == "number")
+				checkString += this.peekTokenValue(peekLevel);
 			else
-				checkString += this.currentToken.type;
+				checkString += this.peekTokenType(peekLevel);
+			peekLevel++;
 		}
-		var emphasis1 = /\*.*\*/;
-		var emphasis2 = /_.*_/;
-		var strong1 = /\*\*.*\*\*/;
-		var strong2 = /__.*__/;
 
-		var position = 0;
-		while (position > -1) {
+		var emphasis1 = /\*(?!\*).?[^\*]+\*(?!\*)/;
+		var emphasis2 = /_(?!_).?[^_]+_(?!_)/;
+		var strong1 = /\*\*(?!\*).?[^\*]+\*\*(?!\*)/;
+		var strong2 = /__(?!_).?[^_]+__(?!_)/;
+
+		var position = -1;
+		do {
 			var position = checkString.substr(position + 1).search(emphasis1);
-			if (position > -1)
-				rules[position] = "emphasis";
-		}
+			if (position > -1) {
+				console.log(position);
+				rules[relativeIndex[position]] = "emphasis";
+			}
+		} while (position > -1);
 
-		var position = 0;
-		while (position > -1) {
+		var position = -1;
+		do {
 			var position = checkString.substr(position + 1).search(emphasis2);
 			if (position > -1)
-				rules[position] = "emphasis";
-		}
+				rules[relativeIndex[position]] = "emphasis";
+		} while (position > -1);
 
-		var position = 0;
-		while (position > -1) {
+		var position = -1;
+		do {
 			var position = checkString.substr(position + 1).search(strong1);
 			if (position > -1)
-				rules[position] = "strong";
-		}
+				rules[relativeIndex[position]] = "strong";
+		} while (position > -1);
 
-		var position = 0;
-		while (position > -1) {
+		var position = -1;
+		do {
 			var position = checkString.substr(position + 1).search(strong2);
 			if (position > -1)
-				rules[position] = "strong";
-		}
+				rules[relativeIndex[position]] = "strong";
+		} while (position > -1);
 
 		return rules;
 	}
@@ -651,6 +665,7 @@ function parser(inputArray) {
 
 	this.line = function() {
 		if (globalDebug) console.log("'line' rule called");
+		console.log(this.peekLine());
 		var node = { type: "line", children: [] };
 		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
 
