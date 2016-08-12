@@ -108,7 +108,6 @@ function parser(inputArray) {
 	this.peekLine = function() {
 		var peekLevel = 0;
 		var checkString = "";
-		var rules = {};
 		var relativeIndex = {};
 		while (this.peekTokenType(peekLevel) != "newline" && this.peekTokenType(peekLevel) != "EOF") {
 			relativeIndex[checkString.length] = peekLevel + this.position;
@@ -123,67 +122,38 @@ function parser(inputArray) {
 			peekLevel++;
 		}
 
-		var emphasis1 = /\*(?!\*).?[^\*]+\*(?!\*)/;
-		var emphasis2 = /_(?!_).?[^_]+_(?!_)/;
-		var strong1 = /\*\*(?!\*).?[^\*]+\*\*(?!\*)/;
-		var strong2 = /__(?!_).?[^_]+__(?!_)/;
+		var rulePatterns = {
+			emphasis1: /\*(?!\*).?[^\*]+\*(?!\*)/,
+			emphasis2: /_(?!_).?[^_]+_(?!_)/,
+			strong1: /\*\*(?!\*).?[^\*]+\*\*(?!\*)/,
+			strong2: /__(?!_).?[^_]+__(?!_)/,
+			code1: /`[^`]+`(?!`)/,
+			code2: /``(?!`).*[^`]?``(?!`)/,
+			linebreak: /\s\s+\n/
+		}
 
-		var code1 = /`[^`]+`(?!`)/;
-		var code2 = /``(?!`).*[^`]?``(?!`)/;
+		var patternStorage = {
+			emphasis1: "emphasis",
+			emphasis2: "emphasis",
+			strong1: "strong",
+			strong2: "strong",
+			code1: "code1",
+			code2: "code2",
+			linebreak: "linebreak"
+		}
 
-		var checkPosition = -1;
-		do {
-			var preSearchLength = checkString.substring(0, checkPosition + 1).length;
-			var searchIndex = checkString.substring(checkPosition + 1).search(emphasis1);
-			checkPosition = preSearchLength + searchIndex;
-			if (searchIndex > -1)
-				rules[relativeIndex[checkPosition]] = "emphasis";
-		} while (searchIndex > -1);
+		var rules = {};
 
-		var checkPosition = -1;
-		do {
-			var preSearchLength = checkString.substring(0, checkPosition + 1).length;
-			var searchIndex = checkString.substring(checkPosition + 1).search(emphasis2);
-			checkPosition = preSearchLength + searchIndex;
-			if (searchIndex > -1)
-				rules[relativeIndex[checkPosition]] = "emphasis";
-		} while (searchIndex > -1);
-
-		var checkPosition = -1;
-		do {
-			var preSearchLength = checkString.substring(0, checkPosition + 1).length;
-			var searchIndex = checkString.substring(checkPosition + 1).search(strong1);
-			checkPosition = preSearchLength + searchIndex;
-			if (searchIndex > -1)
-				rules[relativeIndex[checkPosition]] = "strong";
-		} while (searchIndex > -1);
-
-		var checkPosition = -1;
-		do {
-			var preSearchLength = checkString.substring(0, checkPosition + 1).length;
-			var searchIndex = checkString.substring(checkPosition + 1).search(strong2);
-			checkPosition = preSearchLength + searchIndex;
-			if (searchIndex > -1)
-				rules[relativeIndex[checkPosition]] = "strong";
-		} while (searchIndex > -1);
-
-		var checkPosition = -1;
-		do {
-			var preSearchLength = checkString.substring(0, checkPosition + 1).length;
-			var searchIndex = checkString.substring(checkPosition + 1).search(code1);
-			checkPosition = preSearchLength + searchIndex;
-			if (searchIndex > -1)
-				rules[relativeIndex[checkPosition]] = "code1";
-		} while (searchIndex > -1);
-
-		var checkPosition = -1;
-		do {
-			var preSearchLength = checkString.substring(0, checkPosition + 1).length;
-			var searchIndex = checkString.substring(checkPosition + 1).search(code2);
-			checkPosition = preSearchLength + searchIndex;
-			if (searchIndex > -1)
-				rules[relativeIndex[checkPosition]] = "code2";
-		} while (searchIndex > -1);
+		for (rule in rulePatterns) {
+			var checkPosition = -1;
+			do {
+				var preSearchLength = checkString.substring(0, checkPosition + 1).length;
+				var searchIndex = checkString.substring(checkPosition + 1).search(rulePatterns[rule]);
+				checkPosition = preSearchLength + searchIndex;
+				if (searchIndex > -1)
+					rules[relativeIndex[checkPosition]] = patternStorage[rule];
+			} while (searchIndex > -1);
+		}
 
 		return rules;
 	}
