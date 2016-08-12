@@ -109,7 +109,8 @@ function parser(inputArray) {
 		var peekLevel = 0;
 		var checkString = "";
 		var relativeIndex = {};
-		while (this.peekTokenType(peekLevel) != "newline" && this.peekTokenType(peekLevel) != "EOF") {
+		var breakLoop = false;
+		while (!breakLoop) {
 			relativeIndex[checkString.length] = peekLevel + this.position;
 			if (this.peekTokenType(peekLevel) == "space")
 				checkString += " ";
@@ -117,6 +118,10 @@ function parser(inputArray) {
 				checkString += "\t";
 			else if (this.peekTokenType(peekLevel) == "plaintext" || this.peekTokenType(peekLevel) == "number")
 				checkString += this.peekTokenValue(peekLevel);
+			else if (this.peekTokenType(peekLevel) == "newline" || this.peekTokenType(peekLevel) == "EOF") {
+				checkString += "\n";
+				breakLoop = true;
+			}
 			else
 				checkString += this.peekTokenType(peekLevel);
 			peekLevel++;
@@ -682,6 +687,10 @@ function parser(inputArray) {
 				else if (checkRules[this.position] == "code2") {
 					node.children.push(this.inlineCode("``"));
 					if (globalDebug) console.log("'code' rule returned");
+				}
+				else if (checkRules[this.position] == "linebreak") {
+					this.blank();
+					node.children.push({ type: "linebreak" })
 				}
 			}
 			else {
