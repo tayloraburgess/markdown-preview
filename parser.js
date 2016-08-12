@@ -134,7 +134,8 @@ function parser(inputArray) {
 			strong2: /__(?!_).?[^_]+__(?!_)/,
 			code1: /`[^`]+`(?!`)/,
 			code2: /``(?!`).*[^`]?``(?!`)/,
-			linebreak: /\s\s+\n/
+			linebreak: /\s\s+\n/,
+			inlinelink: /\[.+\]\(.+\)/
 		}
 
 		var patternStorage = {
@@ -144,7 +145,8 @@ function parser(inputArray) {
 			strong2: "strong",
 			code1: "code1",
 			code2: "code2",
-			linebreak: "linebreak"
+			linebreak: "linebreak",
+			inlinelink: "inlinelink"
 		}
 
 		var rules = {};
@@ -692,6 +694,10 @@ function parser(inputArray) {
 					this.blank();
 					node.children.push({ type: "linebreak" })
 				}
+				else if (checkRules[this.position] == "inlinelink") {
+					node.children.push(this.inlineLink(checkRules));
+					if (globalDebug) console.log("'inlineLink' rule returned");
+				}
 			}
 			else {
 				if (this.currentToken.type == "space")
@@ -762,13 +768,29 @@ function parser(inputArray) {
 		while (this.currentToken.type != endType && this.currentToken.type != "EOF") {
 
 			if (this.position in checkRules) {
-				if (checkRules[checkRules['index']] == "emphasis") {
+				if (checkRules[this.position] == "emphasis") {
 					node.children.push(this.emphasis(checkRules));
 					if (globalDebug) console.log("'emphasis' rule returned");
 				}
-				else if (checkRules[checkRules['index']] == "strong") {
+				else if (checkRules[this.position] == "strong") {
 					node.children.push(this.strong(checkRules));
 					if (globalDebug) console.log("'strong' rule returned");
+				}
+				else if (checkRules[this.position] == "code1") {
+					node.children.push(this.inlineCode("`"));
+					if (globalDebug) console.log("'code' rule returned");
+				}
+				else if (checkRules[this.position] == "code2") {
+					node.children.push(this.inlineCode("``"));
+					if (globalDebug) console.log("'code' rule returned");
+				}
+				else if (checkRules[this.position] == "linebreak") {
+					this.blank();
+					node.children.push({ type: "linebreak" })
+				}
+				else if (checkRules[this.position] == "inlinelink") {
+					node.children.push(this.inlineLink(checkRules));
+					if (globalDebug) console.log("'inlineLink' rule returned");
 				}
 			}
 			else {
@@ -783,6 +805,24 @@ function parser(inputArray) {
 
 				this.currentToken = this.getNextToken();
 			}
+		}
+		return node;
+	}
+
+	this.subLineNoFormat = function(endType) {
+		if (globalDebug) console.log("'subLineNoFormat' rule called");
+		var node = { type: "sublinenoformat", children: [] };
+		while (this.currentToken.type != endType && this.currentToken.type != "EOF") {
+ 			if (this.currentToken.type == "space")
+				node.children.push(" ");
+			else if (this.currentToken.type == "tab")
+				node.children.push("	");
+			else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
+				node.children.push(this.currentToken.value);
+			else
+				node.children.push(this.currentToken.type);
+
+			this.currentToken = this.getNextToken();
 		}
 		return node;
 	}
@@ -812,6 +852,21 @@ function parser(inputArray) {
 					breakBlock = true;
 			}
 		}
+		return node;
+	}
+
+	this.inlineLink = function(checkRules) {
+		if (globalDebug) console.log("'inlineLink' rule called");
+		var node = { type: "inlinelink" };
+		this.eat("[");
+		node["text"] = this.subLine(checkRules, "]");
+		if (globalDebug) console.log("'subLine' rule returned");
+		this.eat("]");
+		this.eat("(");
+		node["url"] = this.subLineNoFormat(")");
+		if (globalDebug) console.log("'subLineNoFormat' rule returned");
+		this.eat(")");
+
 		return node;
 	}
 
