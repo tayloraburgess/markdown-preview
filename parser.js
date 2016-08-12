@@ -128,33 +128,62 @@ function parser(inputArray) {
 		var strong1 = /\*\*(?!\*).?[^\*]+\*\*(?!\*)/;
 		var strong2 = /__(?!_).?[^_]+__(?!_)/;
 
+		var code1 = /`[^`]+`(?!`)/;
+		var code2 = /``(?!`).*[^`]?``(?!`)/;
+
 		var checkPosition = -1;
 		do {
-			var checkPosition = checkString.substr(checkPosition + 1).search(emphasis1);
-			if (checkPosition > -1)
+			var preSearchLength = checkString.substring(0, checkPosition + 1).length;
+			var searchIndex = checkString.substring(checkPosition + 1).search(emphasis1);
+			checkPosition = preSearchLength + searchIndex;
+			if (searchIndex > -1)
 				rules[relativeIndex[checkPosition]] = "emphasis";
-		} while (checkPosition > -1);
+		} while (searchIndex > -1);
 
 		var checkPosition = -1;
 		do {
-			var checkPosition = checkString.substr(checkPosition + 1).search(emphasis2);
-			if (checkPosition > -1)
+			var preSearchLength = checkString.substring(0, checkPosition + 1).length;
+			var searchIndex = checkString.substring(checkPosition + 1).search(emphasis2);
+			checkPosition = preSearchLength + searchIndex;
+			if (searchIndex > -1)
 				rules[relativeIndex[checkPosition]] = "emphasis";
-		} while (checkPosition > -1);
+		} while (searchIndex > -1);
 
 		var checkPosition = -1;
 		do {
-			var checkPosition = checkString.substr(checkPosition + 1).search(strong1);
-			if (checkPosition > -1)
+			var preSearchLength = checkString.substring(0, checkPosition + 1).length;
+			var searchIndex = checkString.substring(checkPosition + 1).search(strong1);
+			checkPosition = preSearchLength + searchIndex;
+			if (searchIndex > -1)
 				rules[relativeIndex[checkPosition]] = "strong";
-		} while (checkPosition > -1);
+		} while (searchIndex > -1);
 
 		var checkPosition = -1;
 		do {
-			var checkPosition = checkString.substr(checkPosition + 1).search(strong2);
-			if (checkPosition > -1)
+			var preSearchLength = checkString.substring(0, checkPosition + 1).length;
+			var searchIndex = checkString.substring(checkPosition + 1).search(strong2);
+			checkPosition = preSearchLength + searchIndex;
+			if (searchIndex > -1)
 				rules[relativeIndex[checkPosition]] = "strong";
-		} while (checkPosition > -1);
+		} while (searchIndex > -1);
+
+		var checkPosition = -1;
+		do {
+			var preSearchLength = checkString.substring(0, checkPosition + 1).length;
+			var searchIndex = checkString.substring(checkPosition + 1).search(code1);
+			checkPosition = preSearchLength + searchIndex;
+			if (searchIndex > -1)
+				rules[relativeIndex[checkPosition]] = "code1";
+		} while (searchIndex > -1);
+
+		var checkPosition = -1;
+		do {
+			var preSearchLength = checkString.substring(0, checkPosition + 1).length;
+			var searchIndex = checkString.substring(checkPosition + 1).search(code2);
+			checkPosition = preSearchLength + searchIndex;
+			if (searchIndex > -1)
+				rules[relativeIndex[checkPosition]] = "code2";
+		} while (searchIndex > -1);
 
 		return rules;
 	}
@@ -676,6 +705,14 @@ function parser(inputArray) {
 					node.children.push(this.strong(checkRules));
 					if (globalDebug) console.log("'strong' rule returned");
 				}
+				else if (checkRules[this.position] == "code1") {
+					node.children.push(this.inlineCode("`"));
+					if (globalDebug) console.log("'code' rule returned");
+				}
+				else if (checkRules[this.position] == "code2") {
+					node.children.push(this.inlineCode("``"));
+					if (globalDebug) console.log("'code' rule returned");
+				}
 			}
 			else {
 				if (this.currentToken.type == "space")
@@ -771,6 +808,34 @@ function parser(inputArray) {
 		return node;
 	}
 
+	this.subCodeLine = function(codeType) {
+		if (globalDebug) console.log("'subCodeLine' rule called");
+		var node = { type: "inlinecode", children: [] };
+		var breakBlock = false;
+		while (!breakBlock && this.currentToken.type != "EOF") {
+
+			if (this.currentToken.type == "space")
+				node.children.push(" ");
+			else if (this.currentToken.type == "tab")
+				node.children.push("	");
+			else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
+				node.children.push(this.currentToken.value);
+			else
+				node.children.push(this.currentToken.type);
+
+			this.currentToken = this.getNextToken();
+			if (codeType == "`" && this.currentToken.type == "`")
+				breakBlock = true;
+			else if (codeType == "``") {
+				var ticksNoSpace = this.currentToken.type == "`" && this.peekTokenType(1) == "`";
+				var tickSpace = this.currentToken.type == "space" && this.peekTokenType(1) == "`" && this.peekTokenType(2) == "`";
+				if (ticksNoSpace || tickSpace)
+					breakBlock = true;
+			}
+		}
+		return node;
+	}
+
 	this.emphasis = function(rules) {
 		if (globalDebug) console.log("'emphasis' rule called");
 		var checkRules = rules;
@@ -778,13 +843,13 @@ function parser(inputArray) {
 		if (this.currentToken.type == "*") {
 			this.eat("*");
 			node.children.push(this.subLine(checkRules, "*"));
-			if (globalDebug) console.log("'subLine' rule called");
+			if (globalDebug) console.log("'subLine' rule returned");
 			this.eat("*");
 		}
 		else if (this.currentToken.type == "_") {
 			this.eat("_");
 			node.children.push(this.subLine(checkRules, "_"));
-			if (globalDebug) console.log("'subLine' rule called");
+			if (globalDebug) console.log("'subLine' rule returned");
 			this.eat("_");
 		}
 
@@ -799,7 +864,7 @@ function parser(inputArray) {
 			this.eat("*");
 			this.eat("*");
 			node.children.push(this.subLine(checkRules, "*"));
-			if (globalDebug) console.log("'subLine' rule called");
+			if (globalDebug) console.log("'subLine' rule returned");
 			this.eat("*");
 			this.eat("*");
 		}
@@ -807,9 +872,32 @@ function parser(inputArray) {
 			this.eat("_");
 			this.eat("_");
 			node.children.push(this.subLine(checkRules, "_"));
-			if (globalDebug) console.log("'subLine' rule called");
+			if (globalDebug) console.log("'subLine' rule returned");
 			this.eat("_");
 			this.eat("_");
+		}
+
+		return node;
+	}
+
+	this.inlineCode = function(codeType) {
+		if (globalDebug) console.log("'inlineCode' rule called");
+		var node;
+		if (codeType == "`") {
+			this.eat("`");
+			node = this.subCodeLine(codeType);
+			this.eat("`");
+		}
+		else if (codeType == "``") {
+			this.eat("`");
+			this.eat("`");
+			if (this.currentToken.type == "space")
+				this.eat("space");
+			node = this.subCodeLine(codeType);
+			if (this.currentToken.type == "space")
+				this.eat("space");
+			this.eat("`");
+			this.eat("`");
 		}
 
 		return node;
