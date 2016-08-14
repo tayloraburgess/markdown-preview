@@ -45,6 +45,14 @@ function parser(inputArray) {
 			return null;
 	}
 
+	this.peekTokenValue= function(advancePosition) {
+		if (this.position + (advancePosition - 1) < this.tokenArray.length)
+			return this.tokenArray[this.position + (advancePosition - 1)].value;
+
+		else
+			return null;
+	}
+
 	// * Peek Functions *
 	//
 	// Look ahead at tokens without eating them
@@ -95,6 +103,74 @@ function parser(inputArray) {
 					peekLevel++;
 			}
 			return returnValue;
+	}
+
+	this.peekLine = function() {
+		var peekLevel = 0;
+		var checkString = "";
+		var relativeIndex = {};
+		var breakLoop = false;
+		while (!breakLoop) {
+			relativeIndex[checkString.length] = peekLevel + this.position;
+			if (this.peekTokenType(peekLevel) == "space")
+				checkString += " ";
+			else if (this.peekTokenType(peekLevel) == "tab")
+				checkString += "\t";
+			else if (this.peekTokenType(peekLevel) == "plaintext" || this.peekTokenType(peekLevel) == "number")
+				checkString += this.peekTokenValue(peekLevel);
+			else if (this.peekTokenType(peekLevel) == "newline" || this.peekTokenType(peekLevel) == "EOF") {
+				checkString += "\n";
+				breakLoop = true;
+			}
+			else
+				checkString += this.peekTokenType(peekLevel);
+			peekLevel++;
+		}
+
+		var rulePatterns = {
+			emphasis1: /\*(?!\*).?[^\*]+\*(?!\*)/,
+			emphasis2: /_(?!_).?[^_]+_(?!_)/,
+			strong1: /\*\*(?!\*).?[^\*]+\*\*(?!\*)/,
+			strong2: /__(?!_).?[^_]+__(?!_)/,
+			code1: /`[^`]+`(?!`)/,
+			code2: /``(?!`).*[^`]?``(?!`)/,
+			linebreak: /\s\s+\n/,
+			inlinelink: /\[.+\]\(.+\)/,
+			inlineimage: /\!\[.+\]\(.+\)/,
+			hrule1: /^(?:\s*\*\s*){3,}$/,
+			hrule2: /^(?:\s*-\s*){3,}$/,
+			hrule3: /^(?:\s*_\s*){3,}$/
+		}
+
+		var patternStorage = {
+			emphasis1: "emphasis",
+			emphasis2: "emphasis",
+			strong1: "strong",
+			strong2: "strong",
+			code1: "code1",
+			code2: "code2",
+			linebreak: "linebreak",
+			inlinelink: "inlinelink",
+			inlineimage: "inlineimage",
+			hrule1: "hrule",
+			hrule2: "hrule",
+			hrule3: "hrule"
+		}
+
+		var rules = {};
+
+		for (rule in rulePatterns) {
+			var checkPosition = -1;
+			do {
+				var preSearchLength = checkString.substring(0, checkPosition + 1).length;
+				var searchIndex = checkString.substring(checkPosition + 1).search(rulePatterns[rule]);
+				checkPosition = preSearchLength + searchIndex;
+				if (searchIndex > -1)
+					rules[relativeIndex[checkPosition]] = patternStorage[rule];
+			} while (searchIndex > -1);
+		}
+
+		return rules;
 	}
 
 	// * Front Tokens Functions *
@@ -212,32 +288,54 @@ function parser(inputArray) {
 			if (globalDebug) console.log("'blankLine' rule returned");
 			var frontTokens = this.lineFrontCheck();
 
-			if (frontTokens[0].name == "tab") {
-				node.children.push(this.codeBlock(0, frontTokens));
-				if (globalDebug) console.log("'codeBlock' rule returned");
-			}
-
-			else if (frontTokens[0].name == "blockquote") {
-				var nestCheck = 0;
-				for (var i = 1; i < frontTokens.length; i++) {
-					if (frontTokens[i].name == "blockquote")
-						nestCheck++;
-					else
-						break;
+			if (frontTokens.length > 0) {
+				if (frontTokens[0].name == "tab") {
+					node.children.push(this.codeBlock(0, frontTokens));
+					if (globalDebug) console.log("'codeBlock' rule returned");
 				}
-				node.children.push(this.blockQuote(0, nestCheck, frontTokens));
-				if (globalDebug) console.log("'blockquote' rule returned");
-			}
 
-			else if (frontTokens[0].name == "list") {
-				node.children.push(this.list(0, frontTokens, "unordered"));
-				if (globalDebug) console.log("'list' rule returned");
+				else if (frontTokens[0].name == "blockquote") {
+					var nestCheck = 0;
+					for (var i = 1; i < frontTokens.length; i++) {
+						if (frontTokens[i].name == "blockquote")
+							nestCheck++;
+						else
+							break;
+					}
+					node.children.push(this.blockQuote(0, nestCheck, frontTokens));
+					if (globalDebug) console.log("'blockquote' rule returned");
+				}
+
+				else if (frontTokens[0].name == "list") {
+					node.children.push(this.list(0, frontTokens, "unordered"));
+					if (globalDebug) console.log("'list' rule returned");
+				}
+				else if (frontTokens[0].name == "orderedlist") {
+					node.children.push(this.list(0, frontTokens, "ordered"));
+					if (globalDebug) console.log("'list' rule returned");
+				}
 			}
-			else if (frontTokens[0].name == "orderedlist") {
-				node.children.push(this.list(0, frontTokens, "ordered"));
-				if (globalDebug) console.log("'list' rule returned");
+			else {
+				node.children.push(this.paragraph());
+				if (globalDebug) console.log("'paragraph' rule returned");
 			}
 		}	
+		return node;
+	}
+
+	this.paragraph = function() {
+		if (globalDebug) console.log("'paragraph' rule called");
+
+		var node = { type: "paragraph", children: [] };
+		var frontTokens = this.lineFrontCheck();
+
+		while (this.currentToken.type != "EOF" && this.currentToken.type != "newline" && frontTokens.length == 0) {
+			node.children.push(this.line());
+			if (globalDebug) console.log("'line' rule returned");
+
+			frontTokens = this.lineFrontCheck();
+		}
+
 		return node;
 	}
 
@@ -579,19 +677,57 @@ function parser(inputArray) {
 
 	this.line = function() {
 		if (globalDebug) console.log("'line' rule called");
+		var checkRules = this.peekLine();
 		var node = { type: "line", children: [] };
+		console.log(checkRules);
 		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
 
-			if (this.currentToken.type == "space")
-				node.children.push(" ");
-			else if (this.currentToken.type == "tab")
-				node.children.push("\t");
-			else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
-				node.children.push(this.currentToken.value);
-			else
-				node.children.push(this.currentToken.type);
+			if (this.position in checkRules) {
+				if (checkRules[this.position] == "emphasis") {
+					node.children.push(this.emphasis(checkRules));
+					if (globalDebug) console.log("'emphasis' rule returned");
+				}
+				else if (checkRules[this.position] == "strong") {
+					node.children.push(this.strong(checkRules));
+					if (globalDebug) console.log("'strong' rule returned");
+				}
+				else if (checkRules[this.position] == "code1") {
+					node.children.push(this.inlineCode("`"));
+					if (globalDebug) console.log("'code' rule returned");
+				}
+				else if (checkRules[this.position] == "code2") {
+					node.children.push(this.inlineCode("``"));
+					if (globalDebug) console.log("'code' rule returned");
+				}
+				else if (checkRules[this.position] == "linebreak") {
+					this.blank();
+					node.children.push({ type: "linebreak" })
+				}
+				else if (checkRules[this.position] == "inlinelink") {
+					node.children.push(this.inlineLink(checkRules));
+					if (globalDebug) console.log("'inlineLink' rule returned");
+				}
+				else if (checkRules[this.position] == "inlineimage") {
+					node.children.push(this.inlineImage(checkRules));
+					if (globalDebug) console.log("'inlineImage' rule returned");
+				}
+				else if (checkRules[this.position] == "hrule") {
+					node.children.push(this.horizontalrule());
+					if (globalDebug) console.log("'horizontalrule' rule returned");
+				}
+			}
+			else {
+				if (this.currentToken.type == "space")
+					node.children.push(" ");
+				else if (this.currentToken.type == "tab")
+					node.children.push("\t");
+				else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
+					node.children.push(this.currentToken.value);
+				else
+					node.children.push(this.currentToken.type);
 
-			this.currentToken = this.getNextToken();
+				this.currentToken = this.getNextToken();
+			}
 		}
 		if (this.currentToken.type == "newline")
 			this.eat("newline");
@@ -641,6 +777,213 @@ function parser(inputArray) {
 	//
 	// Rules to process elements tokens
 	// on the individual line level
+
+	this.subLine = function(rules, endType) {
+		if (globalDebug) console.log("'subLine' rule called");
+		var checkRules = rules;
+		var node = { type: "subline", children: [] };
+		while (this.currentToken.type != endType && this.currentToken.type != "EOF") {
+
+			if (this.position in checkRules) {
+				if (checkRules[this.position] == "emphasis") {
+					node.children.push(this.emphasis(checkRules));
+					if (globalDebug) console.log("'emphasis' rule returned");
+				}
+				else if (checkRules[this.position] == "strong") {
+					node.children.push(this.strong(checkRules));
+					if (globalDebug) console.log("'strong' rule returned");
+				}
+				else if (checkRules[this.position] == "code1") {
+					node.children.push(this.inlineCode("`"));
+					if (globalDebug) console.log("'code' rule returned");
+				}
+				else if (checkRules[this.position] == "code2") {
+					node.children.push(this.inlineCode("``"));
+					if (globalDebug) console.log("'code' rule returned");
+				}
+				else if (checkRules[this.position] == "linebreak") {
+					this.blank();
+					node.children.push({ type: "linebreak" })
+				}
+				else if (checkRules[this.position] == "inlinelink") {
+					node.children.push(this.inlineLink(checkRules));
+					if (globalDebug) console.log("'inlineLink' rule returned");
+				}
+				else if (checkRules[this.position] == "inlineimage") {
+					node.children.push(this.inlineImage(checkRules));
+					if (globalDebug) console.log("'inlineImage' rule returned");
+				}
+				else if (checkRules[this.position] == "hrule") {
+					node.children.push(this.horizontalrule());
+					if (globalDebug) console.log("'horizontalrule' rule returned");
+				}
+			}
+			else {
+				if (this.currentToken.type == "space")
+					node.children.push(" ");
+				else if (this.currentToken.type == "tab")
+					node.children.push("\t");
+				else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
+					node.children.push(this.currentToken.value);
+				else
+					node.children.push(this.currentToken.type);
+
+				this.currentToken = this.getNextToken();
+			}
+		}
+		return node;
+	}
+
+	this.subLineNoFormat = function(endType) {
+		if (globalDebug) console.log("'subLineNoFormat' rule called");
+		var node = { type: "sublinenoformat", children: [] };
+		while (this.currentToken.type != endType && this.currentToken.type != "EOF") {
+ 			if (this.currentToken.type == "space")
+				node.children.push(" ");
+			else if (this.currentToken.type == "tab")
+				node.children.push("	");
+			else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
+				node.children.push(this.currentToken.value);
+			else
+				node.children.push(this.currentToken.type);
+
+			this.currentToken = this.getNextToken();
+		}
+		return node;
+	}
+
+	this.subCodeLine = function(codeType) {
+		if (globalDebug) console.log("'subCodeLine' rule called");
+		var node = { type: "inlinecode", children: [] };
+		var breakBlock = false;
+		while (!breakBlock && this.currentToken.type != "EOF") {
+
+			if (this.currentToken.type == "space")
+				node.children.push(" ");
+			else if (this.currentToken.type == "tab")
+				node.children.push("	");
+			else if (this.currentToken.type == "plaintext" || this.currentToken.type == "number")
+				node.children.push(this.currentToken.value);
+			else
+				node.children.push(this.currentToken.type);
+
+			this.currentToken = this.getNextToken();
+			if (codeType == "`" && this.currentToken.type == "`")
+				breakBlock = true;
+			else if (codeType == "``") {
+				var ticksNoSpace = this.currentToken.type == "`" && this.peekTokenType(1) == "`";
+				var tickSpace = this.currentToken.type == "space" && this.peekTokenType(1) == "`" && this.peekTokenType(2) == "`";
+				if (ticksNoSpace || tickSpace)
+					breakBlock = true;
+			}
+		}
+		return node;
+	}
+
+	this.horizontalrule = function() {
+		if (globalDebug) console.log("'horizontalrule' rule called");
+		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
+			this.eat(this.currentToken.type);
+		}
+		return { type: "horizontalrule" };
+	}
+
+	this.inlineLink = function(checkRules) {
+		if (globalDebug) console.log("'inlineLink' rule called");
+		var node = { type: "inlinelink" };
+		this.eat("[");
+		node["text"] = this.subLine(checkRules, "]");
+		if (globalDebug) console.log("'subLine' rule returned");
+		this.eat("]");
+		this.eat("(");
+		node["url"] = this.subLineNoFormat(")");
+		if (globalDebug) console.log("'subLineNoFormat' rule returned");
+		this.eat(")");
+
+		return node;
+	}
+	this.inlineImage = function(checkRules) {
+		if (globalDebug) console.log("'inlineImage' rule called");
+		var node = { type: "inlineimage" };
+		this.eat("!");
+		this.eat("[");
+		node["alttext"] = this.subLine(checkRules, "]");
+		if (globalDebug) console.log("'subLine' rule returned");
+		this.eat("]");
+		this.eat("(");
+		node["url"] = this.subLineNoFormat(")");
+		if (globalDebug) console.log("'subLineNoFormat' rule returned");
+		this.eat(")");
+
+		return node;
+	}
+
+	this.emphasis = function(rules) {
+		if (globalDebug) console.log("'emphasis' rule called");
+		var checkRules = rules;
+		var node = { type: "emphasis", children: [] };
+		if (this.currentToken.type == "*") {
+			this.eat("*");
+			node.children.push(this.subLine(checkRules, "*"));
+			if (globalDebug) console.log("'subLine' rule returned");
+			this.eat("*");
+		}
+		else if (this.currentToken.type == "_") {
+			this.eat("_");
+			node.children.push(this.subLine(checkRules, "_"));
+			if (globalDebug) console.log("'subLine' rule returned");
+			this.eat("_");
+		}
+
+		return node;
+	}
+
+	this.strong = function(rules) {
+		if (globalDebug) console.log("'strong' rule called");
+		var checkRules = rules;
+		var node = { type: "strong", children: [] };
+		if (this.currentToken.type == "*") {
+			this.eat("*");
+			this.eat("*");
+			node.children.push(this.subLine(checkRules, "*"));
+			if (globalDebug) console.log("'subLine' rule returned");
+			this.eat("*");
+			this.eat("*");
+		}
+		else if (this.currentToken.type == "_") {
+			this.eat("_");
+			this.eat("_");
+			node.children.push(this.subLine(checkRules, "_"));
+			if (globalDebug) console.log("'subLine' rule returned");
+			this.eat("_");
+			this.eat("_");
+		}
+
+		return node;
+	}
+
+	this.inlineCode = function(codeType) {
+		if (globalDebug) console.log("'inlineCode' rule called");
+		var node;
+		if (codeType == "`") {
+			this.eat("`");
+			node = this.subCodeLine(codeType);
+			this.eat("`");
+		}
+		else if (codeType == "``") {
+			this.eat("`");
+			this.eat("`");
+			if (this.currentToken.type == "space")
+				this.eat("space");
+			node = this.subCodeLine(codeType);
+			if (this.currentToken.type == "space")
+				this.eat("space");
+			this.eat("`");
+			this.eat("`");
+		}
+
+		return node;
+	}
 
 	this.blank = function() {
 		if (globalDebug) console.log("'blank' rule called");

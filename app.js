@@ -6,6 +6,7 @@ const lexerInclude = require("./lexer.js");
 const parserInclude = require("./parser.js");
 
 function preview() {
+	// Replace with file to be interpreted
 	var file = "test.txt";
 	fs.readFile(file, (err, data) => {
 

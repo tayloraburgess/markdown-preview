@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+// Deprecated, but still here for reference
+
 var fs = require("fs");
 var http = require("http");
 var program = require("commander");
