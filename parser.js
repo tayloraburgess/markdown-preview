@@ -136,7 +136,10 @@ function parser(inputArray) {
 			code2: /``(?!`).*[^`]?``(?!`)/,
 			linebreak: /\s\s+\n/,
 			inlinelink: /\[.+\]\(.+\)/,
-			inlineimage: /\!\[.+\]\(.+\)/
+			inlineimage: /\!\[.+\]\(.+\)/,
+			hrule1: /^(?:\s*\*\s*){3,}$/,
+			hrule2: /^(?:\s*-\s*){3,}$/,
+			hrule3: /^(?:\s*_\s*){3,}$/
 		}
 
 		var patternStorage = {
@@ -148,7 +151,10 @@ function parser(inputArray) {
 			code2: "code2",
 			linebreak: "linebreak",
 			inlinelink: "inlinelink",
-			inlineimage: "inlineimage"
+			inlineimage: "inlineimage",
+			hrule1: "hrule",
+			hrule2: "hrule",
+			hrule3: "hrule"
 		}
 
 		var rules = {};
@@ -673,6 +679,7 @@ function parser(inputArray) {
 		if (globalDebug) console.log("'line' rule called");
 		var checkRules = this.peekLine();
 		var node = { type: "line", children: [] };
+		console.log(checkRules);
 		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
 
 			if (this.position in checkRules) {
@@ -703,6 +710,10 @@ function parser(inputArray) {
 				else if (checkRules[this.position] == "inlineimage") {
 					node.children.push(this.inlineImage(checkRules));
 					if (globalDebug) console.log("'inlineImage' rule returned");
+				}
+				else if (checkRules[this.position] == "hrule") {
+					node.children.push(this.horizontalrule());
+					if (globalDebug) console.log("'horizontalrule' rule returned");
 				}
 			}
 			else {
@@ -802,6 +813,10 @@ function parser(inputArray) {
 					node.children.push(this.inlineImage(checkRules));
 					if (globalDebug) console.log("'inlineImage' rule returned");
 				}
+				else if (checkRules[this.position] == "hrule") {
+					node.children.push(this.horizontalrule());
+					if (globalDebug) console.log("'horizontalrule' rule returned");
+				}
 			}
 			else {
 				if (this.currentToken.type == "space")
@@ -863,6 +878,14 @@ function parser(inputArray) {
 			}
 		}
 		return node;
+	}
+
+	this.horizontalrule = function() {
+		if (globalDebug) console.log("'horizontalrule' rule called");
+		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
+			this.eat(this.currentToken.type);
+		}
+		return { type: "horizontalrule" };
 	}
 
 	this.inlineLink = function(checkRules) {
