@@ -135,7 +135,8 @@ function parser(inputArray) {
 			code1: /`[^`]+`(?!`)/,
 			code2: /``(?!`).*[^`]?``(?!`)/,
 			linebreak: /\s\s+\n/,
-			inlinelink: /\[.+\]\(.+\)/
+			inlinelink: /\[.+\]\(.+\)/,
+			inlineimage: /\!\[.+\]\(.+\)/
 		}
 
 		var patternStorage = {
@@ -146,7 +147,8 @@ function parser(inputArray) {
 			code1: "code1",
 			code2: "code2",
 			linebreak: "linebreak",
-			inlinelink: "inlinelink"
+			inlinelink: "inlinelink",
+			inlineimage: "inlineimage"
 		}
 
 		var rules = {};
@@ -698,6 +700,10 @@ function parser(inputArray) {
 					node.children.push(this.inlineLink(checkRules));
 					if (globalDebug) console.log("'inlineLink' rule returned");
 				}
+				else if (checkRules[this.position] == "inlineimage") {
+					node.children.push(this.inlineImage(checkRules));
+					if (globalDebug) console.log("'inlineImage' rule returned");
+				}
 			}
 			else {
 				if (this.currentToken.type == "space")
@@ -792,6 +798,10 @@ function parser(inputArray) {
 					node.children.push(this.inlineLink(checkRules));
 					if (globalDebug) console.log("'inlineLink' rule returned");
 				}
+				else if (checkRules[this.position] == "inlineimage") {
+					node.children.push(this.inlineImage(checkRules));
+					if (globalDebug) console.log("'inlineImage' rule returned");
+				}
 			}
 			else {
 				if (this.currentToken.type == "space")
@@ -860,6 +870,21 @@ function parser(inputArray) {
 		var node = { type: "inlinelink" };
 		this.eat("[");
 		node["text"] = this.subLine(checkRules, "]");
+		if (globalDebug) console.log("'subLine' rule returned");
+		this.eat("]");
+		this.eat("(");
+		node["url"] = this.subLineNoFormat(")");
+		if (globalDebug) console.log("'subLineNoFormat' rule returned");
+		this.eat(")");
+
+		return node;
+	}
+	this.inlineImage = function(checkRules) {
+		if (globalDebug) console.log("'inlineImage' rule called");
+		var node = { type: "inlineimage" };
+		this.eat("!");
+		this.eat("[");
+		node["alttext"] = this.subLine(checkRules, "]");
 		if (globalDebug) console.log("'subLine' rule returned");
 		this.eat("]");
 		this.eat("(");
