@@ -137,9 +137,6 @@ function parser(inputArray) {
 			linebreak: /\s\s+\n/,
 			inlinelink: /\[.+\]\(.+\)/,
 			inlineimage: /\!\[.+\]\(.+\)/,
-			hrule1: /^(?:\s*\*\s*){3,}$/,
-			hrule2: /^(?:\s*-\s*){3,}$/,
-			hrule3: /^(?:\s*_\s*){3,}$/
 		}
 
 		var patternStorage = {
@@ -152,9 +149,6 @@ function parser(inputArray) {
 			linebreak: "linebreak",
 			inlinelink: "inlinelink",
 			inlineimage: "inlineimage",
-			hrule1: "hrule",
-			hrule2: "hrule",
-			hrule3: "hrule"
 		}
 
 		var rules = {};
@@ -184,53 +178,51 @@ function parser(inputArray) {
 		var peekLevel = 0;
 		var oneList = false;
 
-		var frontTypes = [ ">", "*", "+", "-", "number", "tab" ];
 		var listTypes = [ "*", "+", "-"];
+		var breakLoop = false;
 
 		peekLevel += this.peekSpaces(peekLevel);
 
-		while (frontTypes.indexOf(this.peekTokenType(peekLevel)) > -1) {
+		while (!breakLoop) {
+			breakLoop = true;
 
+			if (this.peekTokenValue(peekLevel) == "hrule") {
+				frontTokens.push( { name: "hrule"} );
+				peekLevel++;
+				breakLoop = false;
+			}
 			if (this.peekTokenType(peekLevel) == "tab") {
 				frontTokens.push( { name: "tab"} );
 				peekLevel++;
+				breakLoop = false;
 			}
 			else if (this.peekTokenType(peekLevel) == ">") {
 				frontTokens.push( { name: "blockquote"} );
 				peekLevel++;
+				breakLoop = false;
 			}
 			else if (listTypes.indexOf(this.peekTokenType(peekLevel)) > -1) {
-				if (oneList)
-					break;
-				else {
+				if (!oneList) {
 					if (this.peekTokenType(peekLevel + 1) == "tab" || this.peekTokenType(peekLevel + 1) == "space") {
 						frontTokens.push( { name: "list"} );
 						oneList = true;
 						peekLevel += 2;
+						breakLoop = false;
 					}
-					else
-						break;
 				}
 			}
 			else if (this.peekTokenType(peekLevel) ==  "number") {
-				if (oneList)
-					break;
-				else {
+				if (!oneList) {
 					if (this.peekTokenType(peekLevel + 1) == ".") {
 						if (this.peekTokenType(peekLevel + 2) == "tab" || this.peekTokenType(peekLevel + 2) == "space") {
 							frontTokens.push( { name: "orderedlist"} );
 							oneList = true;
 							peekLevel += 3;
+							breakLoop = false;
 						}
-						else
-							break;
 					}
-					else
-						break;
 				}
 			}
-			else
-				break;
 
 			peekLevel += this.peekSpaces(peekLevel);
 		}
@@ -314,6 +306,10 @@ function parser(inputArray) {
 					node.children.push(this.list(0, frontTokens, "ordered"));
 					if (globalDebug) console.log("'list' rule returned");
 				}
+				else if (frontTokens[0].name == "hrule") {
+					node.children.push(this.horizontalRule());
+				}
+
 			}
 			else {
 				node.children.push(this.paragraph());
@@ -671,6 +667,17 @@ function parser(inputArray) {
 		return node;
 	}
 
+	this.horizontalRule = function() {
+		if (globalDebug) console.log("'horizontalRule' rule called");
+		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
+			this.eat(this.currentToken.type);
+		}
+		if (this.currentToken.type == "newline")
+			this.eat("newline");
+		
+		return { type: "horizontalrule" };
+	}
+
 	// * Line Rules *
 	//
 	// Rules to parse different types of lines
@@ -710,10 +717,6 @@ function parser(inputArray) {
 				else if (checkRules[this.position] == "inlineimage") {
 					node.children.push(this.inlineImage(checkRules));
 					if (globalDebug) console.log("'inlineImage' rule returned");
-				}
-				else if (checkRules[this.position] == "hrule") {
-					node.children.push(this.horizontalrule());
-					if (globalDebug) console.log("'horizontalrule' rule returned");
 				}
 			}
 			else {
@@ -813,10 +816,6 @@ function parser(inputArray) {
 					node.children.push(this.inlineImage(checkRules));
 					if (globalDebug) console.log("'inlineImage' rule returned");
 				}
-				else if (checkRules[this.position] == "hrule") {
-					node.children.push(this.horizontalrule());
-					if (globalDebug) console.log("'horizontalrule' rule returned");
-				}
 			}
 			else {
 				if (this.currentToken.type == "space")
@@ -878,14 +877,6 @@ function parser(inputArray) {
 			}
 		}
 		return node;
-	}
-
-	this.horizontalrule = function() {
-		if (globalDebug) console.log("'horizontalrule' rule called");
-		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
-			this.eat(this.currentToken.type);
-		}
-		return { type: "horizontalrule" };
 	}
 
 	this.inlineLink = function(checkRules) {
