@@ -450,10 +450,6 @@ function parser(inputArray) {
 									pointHolder.push(this.orderedList(tokenStart + 1, tempCheck, "ordered"));
 									if (globalDebug) console.log("'orderedList' rule returned");
 								}
-								else if (tempCheck[tokenStart + 1].name == "atxheader") {
-									pointHolder.push(this.atxHeader(tempCheck));
-									if (globalDebug) console.log("'atxHeader' rule returned");
-								}
 								else if (tempCheck[tokenStart + 1].name == "blockquote") {
 									var nestCheck = 0;
 									for (var i = tokenStart + 2; i < tempCheck.length; i++) {
@@ -468,6 +464,11 @@ function parser(inputArray) {
 								tempCheck = this.lineFrontCheck();
 							}
 						}
+						else if (!breakLoop && tempCheck.length > tokenStart + 1 && tempCheck[tokenStart].name == "atxheader") {
+							pointHolder.push(this.atxHeader(tempCheck));
+							if (globalDebug) console.log("'atxHeader' rule returned");
+							tempCheck = this.lineFrontCheck();
+						}
 						else if (!breakLoop && tempCheck.length > tokenStart + 2 && tempCheck[tokenStart].name == listTokenType) {
 							if (tempCheck[tokenStart + 1].name == "tab") {
 								if (tempCheck[tokenStart + 2].name == "tab") {
@@ -481,10 +482,6 @@ function parser(inputArray) {
 								else if (tempCheck[tokenStart + 2].name == "orderedlist") {
 									pointHolder.push(this.orderedList(tokenStart + 2, tempCheck, "ordered"));
 									if (globalDebug) console.log("'orderedList' rule returned");
-								}
-								else if (tempCheck[tokenStart + 2].name == "atxheader") {
-									pointHolder.push(this.orderedList(tempCheck));
-									if (globalDebug) console.log("'atxHeader' rule returned");
 								}
 								else if (tempCheck[tokenStart + 2].name == "blockquote") {
 									var nestCheck = 0;
@@ -504,6 +501,11 @@ function parser(inputArray) {
 									tempCheck = this.lineFrontCheck();
 								}
 								tempCheck = this.lineFrontCheck();
+							}
+							else if (tempCheck[tokenStart + 1].name == "atxheader") {
+								pointHolder.push(this.atxHeader(tempCheck));
+								if (globalDebug) console.log("'atxHeader' rule returned");
+								tempCheck = this.lineFrontCheck();	
 							}
 						}
 						else if (tempCheck[tokenStart].name == listTokenType) {
@@ -658,7 +660,7 @@ function parser(inputArray) {
 					breakBlock = true;
 				else if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
 					breakBlock = true;
-				if (tempCheck.length > 0) {
+				if (tempCheck.length >= tokenStart) {
 					if (tempCheck[tokenStart].name == "blockquote")
 						breakBlock = false;
 				}
