@@ -231,7 +231,6 @@ function parser(inputArray) {
 
 			peekLevel += this.peekSpaces(peekLevel);
 		}
-		console.log("lineFrontCheck: ", frontTokens);
 		return frontTokens;
 	}
 
@@ -367,27 +366,46 @@ function parser(inputArray) {
 
 		while(!breakBlock) {
 			var newFrontTokens = this.lineFrontCheck();
-			if (newFrontTokens.length >= frontTokens.length) {
+
+			var sliceFrontTokens = frontTokens.slice(0, tokenStart + 1);
+			var sliceNewFrontTokens = newFrontTokens.slice(0, tokenStart + 1);
+
+			if (this.compareFront(sliceFrontTokens, sliceNewFrontTokens)) {
 				var pointNode = { type: "point", children: [] };
 				var pointHolder = [];
 				var paragraphs = false;
 				var newParagraph = false;
 				var failedParagraph = false;
 				var hitPoint = false;
-
-				var tempCheck = this.lineFrontCheck();
 				var breakLoop = false;
 
+				var tempCheck = this.lineFrontCheck();
+				var loopSliceFrontTokens = frontTokens.slice(0, tokenStart);
+
 				while (!breakLoop) {
+					var sliceTempCheck = tempCheck.slice(0, tokenStart);
+
+					if (this.compareFront(loopSliceFrontTokens, sliceTempCheck))
+						var breakLoop = false;
+					else
+						var breakLoop = true;
+
+					if (tempCheck.length >= tokenStart + 1) {
+						var tempCheckNoFront = tempCheck.slice(tokenStart);
+					}
+					else {
+						var tempCheckNoFront = [];
+					}
+
 					if (this.peekBlankLines(frontTokens, 2))
 						breakLoop = true;
 
-					else if (this.peekBlankLines(frontTokens, 1) && !this.peekBlankLines(frontTokens, 2)) {
+					else if (this.peekBlankLines(loopSliceFrontTokens, 1) && !this.peekBlankLines(loopSliceFrontTokens, 2)) {
 						this.blankLine();
 						if (globalDebug) console.log("'blankLine' rule returned");
 						var tempCheck = this.lineFrontCheck();
 
-						if (tempCheck.length >= frontTokens.length) {
+						if (tempCheck.length - 1 >= tokenStart) {
 							if (tempCheck[tokenStart].name == "tab" && !failedParagraph) {
 								paragraphs = true;
 								newParagraph = true;
@@ -407,35 +425,12 @@ function parser(inputArray) {
 							}
 						}
 						else {
-								tempCheck = this.lineFrontCheck();
-								failedParagraph = true;
-						}
-					}
-
-					else if (tempCheck.length == frontTokens.length - 1) {
-						for (var i = 0; i < tempCheck.length; i++) {
-							if (tempCheck[i].name != frontTokens[i].name) {
-								breakLoop = true;
-								break;
-							}
-						}
-						if (!breakLoop) {
-							this.eatFront(tempCheck);	
-
-							pointHolder.push(this.line());
-							if (globalDebug) console.log("'line' rule returned");
 							tempCheck = this.lineFrontCheck();
+							failedParagraph = true;
 						}
 					}
 
-					else if (tempCheck.length >= frontTokens.length) {
-
-						for (var i = 0; i < tokenStart; i++) {
-							if (tempCheck[i].name != frontTokens[i].name) {
-								breakLoop = true;
-								break;
-							}
-						}
+					else if (tempCheckNoFront.length > 0) {
 						if (!breakLoop && tempCheck.length > tokenStart + 1 && tempCheck[tokenStart].name == "tab") {
 							if (tempCheck.length > frontTokens.length) {
 								if (tempCheck[tokenStart + 1].name == "tab") {
@@ -470,42 +465,48 @@ function parser(inputArray) {
 							tempCheck = this.lineFrontCheck();
 						}
 						else if (!breakLoop && tempCheck.length > tokenStart + 2 && tempCheck[tokenStart].name == listTokenType) {
-							if (tempCheck[tokenStart + 1].name == "tab") {
-								if (tempCheck[tokenStart + 2].name == "tab") {
-									pointHolder.push(this.codeBlock(tokenStart + 3, tempCheck));
-									if (globalDebug) console.log("'codeBlock' rule returned");
-								}
-								else if (tempCheck[tokenStart + 2].name == "list") {
-									pointHolder.push(this.list(tokenStart + 2, tempCheck, "unordered"));
-									if (globalDebug) console.log("'list' rule returned");
-								}
-								else if (tempCheck[tokenStart + 2].name == "orderedlist") {
-									pointHolder.push(this.orderedList(tokenStart + 2, tempCheck, "ordered"));
-									if (globalDebug) console.log("'orderedList' rule returned");
-								}
-								else if (tempCheck[tokenStart + 2].name == "blockquote") {
-									var nestCheck = 0;
-									for (var i = tokenStart + 3; i < tempCheck.length; i++) {
-										if (tempCheck[i].name == "blockquote")
-											nestCheck++;
-										else
-											break;
+							if (hitPoint) {
+								breakLoop = true;
+							}
+							else {
+								if (tempCheck[tokenStart + 1].name == "tab") {
+									if (tempCheck[tokenStart + 2].name == "tab") {
+										pointHolder.push(this.codeBlock(tokenStart + 3, tempCheck));
+										if (globalDebug) console.log("'codeBlock' rule returned");
 									}
-									pointHolder.push(this.blockQuote(tokenStart + 2, nestCheck + tokenStart + 2, tempCheck));
-									if (globalDebug) console.log("'blockquote' rule returned");
-								}
-								else {
-									this.eatFront(tempCheck);
-									pointHolder.push(this.line());
-									if (globalDebug) console.log("'line' rule returned");
+									else if (tempCheck[tokenStart + 2].name == "list") {
+										pointHolder.push(this.list(tokenStart + 2, tempCheck, "unordered"));
+										if (globalDebug) console.log("'list' rule returned");
+									}
+									else if (tempCheck[tokenStart + 2].name == "orderedlist") {
+										pointHolder.push(this.orderedList(tokenStart + 2, tempCheck, "ordered"));
+										if (globalDebug) console.log("'orderedList' rule returned");
+									}
+									else if (tempCheck[tokenStart + 2].name == "blockquote") {
+										var nestCheck = 0;
+										for (var i = tokenStart + 3; i < tempCheck.length; i++) {
+											if (tempCheck[i].name == "blockquote")
+												nestCheck++;
+											else
+												break;
+										}
+										pointHolder.push(this.blockQuote(tokenStart + 2, nestCheck + tokenStart + 2, tempCheck));
+										if (globalDebug) console.log("'blockquote' rule returned");
+									}
+									else {
+										this.eatFront(tempCheck);
+										pointHolder.push(this.line());
+										if (globalDebug) console.log("'line' rule returned");
+										tempCheck = this.lineFrontCheck();
+									}
 									tempCheck = this.lineFrontCheck();
 								}
-								tempCheck = this.lineFrontCheck();
-							}
-							else if (tempCheck[tokenStart + 1].name == "atxheader") {
-								pointHolder.push(this.atxHeader(tempCheck));
-								if (globalDebug) console.log("'atxHeader' rule returned");
-								tempCheck = this.lineFrontCheck();	
+								else if (tempCheck[tokenStart + 1].name == "atxheader") {
+									pointHolder.push(this.atxHeader(tempCheck));
+									if (globalDebug) console.log("'atxHeader' rule returned");
+									tempCheck = this.lineFrontCheck();	
+								}
+								hitPoint = true;
 							}
 						}
 						else if (tempCheck[tokenStart].name == listTokenType) {
@@ -534,6 +535,12 @@ function parser(inputArray) {
 							tempCheck = this.lineFrontCheck();
 						}
 					}
+					else if (tempCheckNoFront.length == 0) {
+						this.eatFront(tempCheck);
+						pointHolder.push(this.line());
+						if (globalDebug) console.log("'line' rule returned");
+						tempCheck = this.lineFrontCheck();
+					}
 					else
 						breakLoop = true;
 
@@ -555,7 +562,7 @@ function parser(inputArray) {
 
 				node.children.push(pointNode);				
 			}
-			 else
+			else
 			 	breakBlock = true;
 
 			if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
