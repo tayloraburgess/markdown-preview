@@ -191,7 +191,12 @@ function parser(inputArray) {
 				peekLevel++;
 				breakLoop = false;
 			}
-			if (this.peekTokenType(peekLevel) == "tab") {
+			else if (this.peekTokenValue(peekLevel) == "atxheader") {
+				frontTokens.push( { name: "atxheader"} );
+				peekLevel++;
+				breakLoop = false;
+			}
+			else if (this.peekTokenType(peekLevel) == "tab") {
 				frontTokens.push( { name: "tab"} );
 				peekLevel++;
 				breakLoop = false;
@@ -244,6 +249,7 @@ function parser(inputArray) {
 	}
 
 	this.eatFront = function(frontTokens, eatLength) {
+		var returnObj = { headerNumber: 0 };
 		if (eatLength == undefined)
 			var eatLength = frontTokens.length;
 
@@ -262,9 +268,16 @@ function parser(inputArray) {
 				this.eat("+");
 			else if (this.currentToken.type == "*")
 				this.eat("*");
+			else if (this.currentToken.type == "#") {
+				while (this.currentToken.type == "#" && returnObj['headerNumber'] < 6) {
+					this.eat("#");
+					returnObj['headerNumber']++;
+				}
+			}
 
 			this.blankNoTab();
 		}
+		return returnObj;
 	}
 
 	// * Block Level Rules *
@@ -308,6 +321,9 @@ function parser(inputArray) {
 				}
 				else if (frontTokens[0].name == "hrule") {
 					node.children.push(this.horizontalRule());
+				}
+				else if (frontTokens[0].name == "atxheader") {
+					node.children.push(this.atxHeader(frontTokens));
 				}
 
 			}
@@ -676,6 +692,15 @@ function parser(inputArray) {
 			this.eat("newline");
 		
 		return { type: "horizontalrule" };
+	}
+
+	this.atxHeader = function(frontTokens) {
+		if (globalDebug) console.log("'atxHeader' rule called");
+		frontInfo = this.eatFront(frontTokens);
+		var node = { type: "atxheader" + frontInfo.headerNumber, children: [] };
+		node.children.push(this.line());
+
+		return node;
 	}
 
 	// * Line Rules *

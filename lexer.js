@@ -21,6 +21,8 @@ function lexer(inputText) {
 	this.hruleDash =  /(?:\s*-\s*){3,}(?:$|\n)/;
 	this.hruleUnderscore = /(?:\s*_\s*){3,}(?:|\n)/;
 
+	this.atxheader = /#{1,6}.+/
+
 	this.error = function(invalid) {
 		throw "Invalid character: " + invalid;
 	}
@@ -88,8 +90,13 @@ function lexer(inputText) {
 				return new token("_");
 			}
 			else if (this.currentChar == "#") {
+				if (this.text.substring(this.position).search(this.atxheader) == 0) {
+					this.advance(1);
+					return new token("#", "atxheader");
+				}
 				this.advance(1);
 				return new token("#");
+
 			}
 			else if (this.currentChar == ">") {
 				this.advance(1);
