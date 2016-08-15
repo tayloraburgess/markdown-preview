@@ -173,9 +173,24 @@ function parser(inputArray) {
 	// at the front of lines, and functions
 	// to analyze/eat those tokens
 
-	this.lineFrontCheck = function() {
+	this.lineFrontCheck = function(skipLines) {
+
+		if (skipLines == null) {
+			var peekLevel = 0;
+		}
+		else {
+			var peekLevel = 0;
+			for (var i = 0; i < skipLines; i++) {
+				while (this.peekTokenType(peekLevel) != "newline" && this.peekTokenType(peekLevel) != "EOF") {
+					peekLevel++;
+				}
+
+				if (this.peekTokenType != "EOF")
+					peekLevel++;
+			}
+		}
+
 		var frontTokens = [];
-		var peekLevel = 0;
 		var oneList = false;
 
 		var listTypes = [ "*", "+", "-"];
@@ -193,6 +208,11 @@ function parser(inputArray) {
 			}
 			else if (this.peekTokenValue(peekLevel) == "atxheader") {
 				frontTokens.push( { name: "atxheader"} );
+				peekLevel++;
+				breakLoop = false;
+			}
+			else if (this.peekTokenValue(peekLevel) == "setextheader") {
+				frontTokens.push( { name: "setextheader"} );
 				peekLevel++;
 				breakLoop = false;
 			}
@@ -319,7 +339,7 @@ function parser(inputArray) {
 					node.children.push(this.list(0, frontTokens, "ordered"));
 					if (globalDebug) console.log("'list' rule returned");
 				}
-				else if (frontTokens[0].name == "hrule") {
+				else if (frontTokens[0].name == "hrule" || frontTokens[0].name == "setextheader") {
 					node.children.push(this.horizontalRule());
 				}
 				else if (frontTokens[0].name == "atxheader") {
@@ -328,8 +348,22 @@ function parser(inputArray) {
 
 			}
 			else {
-				node.children.push(this.paragraph());
-				if (globalDebug) console.log("'paragraph' rule returned");
+				var nextLineFrontTokens = this.lineFrontCheck(1);
+				console.log(nextLineFrontTokens);
+				if (nextLineFrontTokens.length > 0) {
+					if (nextLineFrontTokens[0].name == "setextheader")  {
+						node.children.push(this.setextHeader());
+						if (globalDebug) console.log("'setextHeader' rule returned");
+					}
+					else { 
+						node.children.push(this.paragraph());
+						if (globalDebug) console.log("'paragraph' rule returned");
+					}
+				}
+				else { 
+					node.children.push(this.paragraph());
+					if (globalDebug) console.log("'paragraph' rule returned");
+				}
 			}
 		}	
 		return node;
@@ -722,6 +756,28 @@ function parser(inputArray) {
 		frontInfo = this.eatFront(frontTokens);
 		var node = { type: "atxheader" + frontInfo.headerNumber, children: [] };
 		node.children.push(this.line());
+		if (globalDebug) console.log("'line' rule returned");
+
+		return node;
+	}
+
+	this.setextHeader = function() {
+		if (globalDebug) console.log("'setextHeader' rule called");
+		var childLine = this.line();
+		if (globalDebug) console.log("'line' rule returned");
+		if (this.currentToken.type == "=") {
+			var node = { type: "setext1", children: [childLine]}
+			while (this.currentToken.type == "=")
+				this.eat("=");
+		}
+		else if (this.currentToken.type == "-") {
+			var node = { type: "setext2", children: [childLine]}
+			while (this.currentToken.type == "-")
+				this.eat("-");
+		}
+
+		if (this.currentToken.type == "newline")
+			this.eat("newline");
 
 		return node;
 	}
