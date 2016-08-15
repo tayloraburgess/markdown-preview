@@ -660,7 +660,7 @@ function parser(inputArray) {
 					breakBlock = true;
 				else if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
 					breakBlock = true;
-				if (tempCheck.length >= tokenStart) {
+				if (tempCheck.length >= tokenStart + 1) {
 					if (tempCheck[tokenStart].name == "blockquote")
 						breakBlock = false;
 				}
