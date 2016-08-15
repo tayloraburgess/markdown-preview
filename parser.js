@@ -231,6 +231,7 @@ function parser(inputArray) {
 
 			peekLevel += this.peekSpaces(peekLevel);
 		}
+		console.log("lineFrontCheck: ", frontTokens);
 		return frontTokens;
 	}
 
@@ -449,6 +450,10 @@ function parser(inputArray) {
 									pointHolder.push(this.orderedList(tokenStart + 1, tempCheck, "ordered"));
 									if (globalDebug) console.log("'orderedList' rule returned");
 								}
+								else if (tempCheck[tokenStart + 1].name == "atxheader") {
+									pointHolder.push(this.atxHeader(tempCheck));
+									if (globalDebug) console.log("'atxHeader' rule returned");
+								}
 								else if (tempCheck[tokenStart + 1].name == "blockquote") {
 									var nestCheck = 0;
 									for (var i = tokenStart + 2; i < tempCheck.length; i++) {
@@ -476,6 +481,10 @@ function parser(inputArray) {
 								else if (tempCheck[tokenStart + 2].name == "orderedlist") {
 									pointHolder.push(this.orderedList(tokenStart + 2, tempCheck, "ordered"));
 									if (globalDebug) console.log("'orderedList' rule returned");
+								}
+								else if (tempCheck[tokenStart + 2].name == "atxheader") {
+									pointHolder.push(this.orderedList(tempCheck));
+									if (globalDebug) console.log("'atxHeader' rule returned");
 								}
 								else if (tempCheck[tokenStart + 2].name == "blockquote") {
 									var nestCheck = 0;
@@ -606,6 +615,11 @@ function parser(inputArray) {
 						if (globalDebug) console.log("'orderedlist' rule returned");
 						frontTokens = this.lineFrontCheck();
 					}
+					else if (tempCheck[tokenIndex + 1].name == "atxheader") {
+						node.children.push(this.atxHeader(frontTokens));
+						if (globalDebug) console.log("'atxHeader' rule returned");
+						frontTokens = this.lineFrontCheck();
+					}
 				}
 				else {
 					this.eatFront(tempCheck);
@@ -711,7 +725,6 @@ function parser(inputArray) {
 		if (globalDebug) console.log("'line' rule called");
 		var checkRules = this.peekLine();
 		var node = { type: "line", children: [] };
-		console.log(checkRules);
 		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
 
 			if (this.position in checkRules) {
