@@ -137,9 +137,6 @@ function parser(inputArray) {
 			linebreak: /\s\s+\n/,
 			inlinelink: /\[.+\]\(.+\)/,
 			inlineimage: /\!\[.+\]\(.+\)/,
-			hrule1: /^(?:\s*\*\s*){3,}$/,
-			hrule2: /^(?:\s*-\s*){3,}$/,
-			hrule3: /^(?:\s*_\s*){3,}$/
 		}
 
 		var patternStorage = {
@@ -152,9 +149,6 @@ function parser(inputArray) {
 			linebreak: "linebreak",
 			inlinelink: "inlinelink",
 			inlineimage: "inlineimage",
-			hrule1: "hrule",
-			hrule2: "hrule",
-			hrule3: "hrule"
 		}
 
 		var rules = {};
@@ -179,58 +173,81 @@ function parser(inputArray) {
 	// at the front of lines, and functions
 	// to analyze/eat those tokens
 
-	this.lineFrontCheck = function() {
+	this.lineFrontCheck = function(skipLines) {
+
+		if (skipLines == null) {
+			var peekLevel = 0;
+		}
+		else {
+			var peekLevel = 0;
+			for (var i = 0; i < skipLines; i++) {
+				while (this.peekTokenType(peekLevel) != "newline" && this.peekTokenType(peekLevel) != "EOF") {
+					peekLevel++;
+				}
+
+				if (this.peekTokenType != "EOF")
+					peekLevel++;
+			}
+		}
+
 		var frontTokens = [];
-		var peekLevel = 0;
 		var oneList = false;
 
-		var frontTypes = [ ">", "*", "+", "-", "number", "tab" ];
 		var listTypes = [ "*", "+", "-"];
+		var breakLoop = false;
 
 		peekLevel += this.peekSpaces(peekLevel);
 
-		while (frontTypes.indexOf(this.peekTokenType(peekLevel)) > -1) {
+		while (!breakLoop) {
+			breakLoop = true;
 
-			if (this.peekTokenType(peekLevel) == "tab") {
+			if (this.peekTokenValue(peekLevel) == "hrule") {
+				frontTokens.push( { name: "hrule"} );
+				peekLevel++;
+				breakLoop = false;
+			}
+			else if (this.peekTokenValue(peekLevel) == "atxheader") {
+				frontTokens.push( { name: "atxheader"} );
+				peekLevel++;
+				breakLoop = false;
+			}
+			else if (this.peekTokenValue(peekLevel) == "setextheader") {
+				frontTokens.push( { name: "setextheader"} );
+				peekLevel++;
+				breakLoop = false;
+			}
+			else if (this.peekTokenType(peekLevel) == "tab") {
 				frontTokens.push( { name: "tab"} );
 				peekLevel++;
+				breakLoop = false;
 			}
 			else if (this.peekTokenType(peekLevel) == ">") {
 				frontTokens.push( { name: "blockquote"} );
 				peekLevel++;
+				breakLoop = false;
 			}
 			else if (listTypes.indexOf(this.peekTokenType(peekLevel)) > -1) {
-				if (oneList)
-					break;
-				else {
+				if (!oneList) {
 					if (this.peekTokenType(peekLevel + 1) == "tab" || this.peekTokenType(peekLevel + 1) == "space") {
 						frontTokens.push( { name: "list"} );
 						oneList = true;
 						peekLevel += 2;
+						breakLoop = false;
 					}
-					else
-						break;
 				}
 			}
 			else if (this.peekTokenType(peekLevel) ==  "number") {
-				if (oneList)
-					break;
-				else {
+				if (!oneList) {
 					if (this.peekTokenType(peekLevel + 1) == ".") {
 						if (this.peekTokenType(peekLevel + 2) == "tab" || this.peekTokenType(peekLevel + 2) == "space") {
 							frontTokens.push( { name: "orderedlist"} );
 							oneList = true;
 							peekLevel += 3;
+							breakLoop = false;
 						}
-						else
-							break;
 					}
-					else
-						break;
 				}
 			}
-			else
-				break;
 
 			peekLevel += this.peekSpaces(peekLevel);
 		}
@@ -252,6 +269,7 @@ function parser(inputArray) {
 	}
 
 	this.eatFront = function(frontTokens, eatLength) {
+		var returnObj = { headerNumber: 0 };
 		if (eatLength == undefined)
 			var eatLength = frontTokens.length;
 
@@ -270,9 +288,16 @@ function parser(inputArray) {
 				this.eat("+");
 			else if (this.currentToken.type == "*")
 				this.eat("*");
+			else if (this.currentToken.type == "#") {
+				while (this.currentToken.type == "#" && returnObj['headerNumber'] < 6) {
+					this.eat("#");
+					returnObj['headerNumber']++;
+				}
+			}
 
 			this.blankNoTab();
 		}
+		return returnObj;
 	}
 
 	// * Block Level Rules *
@@ -314,10 +339,31 @@ function parser(inputArray) {
 					node.children.push(this.list(0, frontTokens, "ordered"));
 					if (globalDebug) console.log("'list' rule returned");
 				}
+				else if (frontTokens[0].name == "hrule" || frontTokens[0].name == "setextheader") {
+					node.children.push(this.horizontalRule());
+				}
+				else if (frontTokens[0].name == "atxheader") {
+					node.children.push(this.atxHeader(frontTokens));
+				}
+
 			}
 			else {
-				node.children.push(this.paragraph());
-				if (globalDebug) console.log("'paragraph' rule returned");
+				var nextLineFrontTokens = this.lineFrontCheck(1);
+				console.log(nextLineFrontTokens);
+				if (nextLineFrontTokens.length > 0) {
+					if (nextLineFrontTokens[0].name == "setextheader")  {
+						node.children.push(this.setextHeader());
+						if (globalDebug) console.log("'setextHeader' rule returned");
+					}
+					else { 
+						node.children.push(this.paragraph());
+						if (globalDebug) console.log("'paragraph' rule returned");
+					}
+				}
+				else { 
+					node.children.push(this.paragraph());
+					if (globalDebug) console.log("'paragraph' rule returned");
+				}
 			}
 		}	
 		return node;
@@ -354,27 +400,46 @@ function parser(inputArray) {
 
 		while(!breakBlock) {
 			var newFrontTokens = this.lineFrontCheck();
-			if (newFrontTokens.length >= frontTokens.length) {
+
+			var sliceFrontTokens = frontTokens.slice(0, tokenStart + 1);
+			var sliceNewFrontTokens = newFrontTokens.slice(0, tokenStart + 1);
+
+			if (this.compareFront(sliceFrontTokens, sliceNewFrontTokens)) {
 				var pointNode = { type: "point", children: [] };
 				var pointHolder = [];
 				var paragraphs = false;
 				var newParagraph = false;
 				var failedParagraph = false;
 				var hitPoint = false;
-
-				var tempCheck = this.lineFrontCheck();
 				var breakLoop = false;
 
+				var tempCheck = this.lineFrontCheck();
+				var loopSliceFrontTokens = frontTokens.slice(0, tokenStart);
+
 				while (!breakLoop) {
+					var sliceTempCheck = tempCheck.slice(0, tokenStart);
+
+					if (this.compareFront(loopSliceFrontTokens, sliceTempCheck))
+						var breakLoop = false;
+					else
+						var breakLoop = true;
+
+					if (tempCheck.length >= tokenStart + 1) {
+						var tempCheckNoFront = tempCheck.slice(tokenStart);
+					}
+					else {
+						var tempCheckNoFront = [];
+					}
+
 					if (this.peekBlankLines(frontTokens, 2))
 						breakLoop = true;
 
-					else if (this.peekBlankLines(frontTokens, 1) && !this.peekBlankLines(frontTokens, 2)) {
+					else if (this.peekBlankLines(loopSliceFrontTokens, 1) && !this.peekBlankLines(loopSliceFrontTokens, 2)) {
 						this.blankLine();
 						if (globalDebug) console.log("'blankLine' rule returned");
 						var tempCheck = this.lineFrontCheck();
 
-						if (tempCheck.length >= frontTokens.length) {
+						if (tempCheck.length - 1 >= tokenStart) {
 							if (tempCheck[tokenStart].name == "tab" && !failedParagraph) {
 								paragraphs = true;
 								newParagraph = true;
@@ -394,35 +459,12 @@ function parser(inputArray) {
 							}
 						}
 						else {
-								tempCheck = this.lineFrontCheck();
-								failedParagraph = true;
-						}
-					}
-
-					else if (tempCheck.length == frontTokens.length - 1) {
-						for (var i = 0; i < tempCheck.length; i++) {
-							if (tempCheck[i].name != frontTokens[i].name) {
-								breakLoop = true;
-								break;
-							}
-						}
-						if (!breakLoop) {
-							this.eatFront(tempCheck);	
-
-							pointHolder.push(this.line());
-							if (globalDebug) console.log("'line' rule returned");
 							tempCheck = this.lineFrontCheck();
+							failedParagraph = true;
 						}
 					}
 
-					else if (tempCheck.length >= frontTokens.length) {
-
-						for (var i = 0; i < tokenStart; i++) {
-							if (tempCheck[i].name != frontTokens[i].name) {
-								breakLoop = true;
-								break;
-							}
-						}
+					else if (tempCheckNoFront.length > 0) {
 						if (!breakLoop && tempCheck.length > tokenStart + 1 && tempCheck[tokenStart].name == "tab") {
 							if (tempCheck.length > frontTokens.length) {
 								if (tempCheck[tokenStart + 1].name == "tab") {
@@ -451,38 +493,54 @@ function parser(inputArray) {
 								tempCheck = this.lineFrontCheck();
 							}
 						}
+						else if (!breakLoop && tempCheck.length > tokenStart + 1 && tempCheck[tokenStart].name == "atxheader") {
+							pointHolder.push(this.atxHeader(tempCheck));
+							if (globalDebug) console.log("'atxHeader' rule returned");
+							tempCheck = this.lineFrontCheck();
+						}
 						else if (!breakLoop && tempCheck.length > tokenStart + 2 && tempCheck[tokenStart].name == listTokenType) {
-							if (tempCheck[tokenStart + 1].name == "tab") {
-								if (tempCheck[tokenStart + 2].name == "tab") {
-									pointHolder.push(this.codeBlock(tokenStart + 3, tempCheck));
-									if (globalDebug) console.log("'codeBlock' rule returned");
-								}
-								else if (tempCheck[tokenStart + 2].name == "list") {
-									pointHolder.push(this.list(tokenStart + 2, tempCheck, "unordered"));
-									if (globalDebug) console.log("'list' rule returned");
-								}
-								else if (tempCheck[tokenStart + 2].name == "orderedlist") {
-									pointHolder.push(this.orderedList(tokenStart + 2, tempCheck, "ordered"));
-									if (globalDebug) console.log("'orderedList' rule returned");
-								}
-								else if (tempCheck[tokenStart + 2].name == "blockquote") {
-									var nestCheck = 0;
-									for (var i = tokenStart + 3; i < tempCheck.length; i++) {
-										if (tempCheck[i].name == "blockquote")
-											nestCheck++;
-										else
-											break;
+							if (hitPoint) {
+								breakLoop = true;
+							}
+							else {
+								if (tempCheck[tokenStart + 1].name == "tab") {
+									if (tempCheck[tokenStart + 2].name == "tab") {
+										pointHolder.push(this.codeBlock(tokenStart + 3, tempCheck));
+										if (globalDebug) console.log("'codeBlock' rule returned");
 									}
-									pointHolder.push(this.blockQuote(tokenStart + 2, nestCheck + tokenStart + 2, tempCheck));
-									if (globalDebug) console.log("'blockquote' rule returned");
-								}
-								else {
-									this.eatFront(tempCheck);
-									pointHolder.push(this.line());
-									if (globalDebug) console.log("'line' rule returned");
+									else if (tempCheck[tokenStart + 2].name == "list") {
+										pointHolder.push(this.list(tokenStart + 2, tempCheck, "unordered"));
+										if (globalDebug) console.log("'list' rule returned");
+									}
+									else if (tempCheck[tokenStart + 2].name == "orderedlist") {
+										pointHolder.push(this.orderedList(tokenStart + 2, tempCheck, "ordered"));
+										if (globalDebug) console.log("'orderedList' rule returned");
+									}
+									else if (tempCheck[tokenStart + 2].name == "blockquote") {
+										var nestCheck = 0;
+										for (var i = tokenStart + 3; i < tempCheck.length; i++) {
+											if (tempCheck[i].name == "blockquote")
+												nestCheck++;
+											else
+												break;
+										}
+										pointHolder.push(this.blockQuote(tokenStart + 2, nestCheck + tokenStart + 2, tempCheck));
+										if (globalDebug) console.log("'blockquote' rule returned");
+									}
+									else {
+										this.eatFront(tempCheck);
+										pointHolder.push(this.line());
+										if (globalDebug) console.log("'line' rule returned");
+										tempCheck = this.lineFrontCheck();
+									}
 									tempCheck = this.lineFrontCheck();
 								}
-								tempCheck = this.lineFrontCheck();
+								else if (tempCheck[tokenStart + 1].name == "atxheader") {
+									pointHolder.push(this.atxHeader(tempCheck));
+									if (globalDebug) console.log("'atxHeader' rule returned");
+									tempCheck = this.lineFrontCheck();	
+								}
+								hitPoint = true;
 							}
 						}
 						else if (tempCheck[tokenStart].name == listTokenType) {
@@ -511,6 +569,12 @@ function parser(inputArray) {
 							tempCheck = this.lineFrontCheck();
 						}
 					}
+					else if (tempCheckNoFront.length == 0) {
+						this.eatFront(tempCheck);
+						pointHolder.push(this.line());
+						if (globalDebug) console.log("'line' rule returned");
+						tempCheck = this.lineFrontCheck();
+					}
 					else
 						breakLoop = true;
 
@@ -532,7 +596,7 @@ function parser(inputArray) {
 
 				node.children.push(pointNode);				
 			}
-			 else
+			else
 			 	breakBlock = true;
 
 			if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
@@ -594,6 +658,11 @@ function parser(inputArray) {
 						if (globalDebug) console.log("'orderedlist' rule returned");
 						frontTokens = this.lineFrontCheck();
 					}
+					else if (tempCheck[tokenIndex + 1].name == "atxheader") {
+						node.children.push(this.atxHeader(frontTokens));
+						if (globalDebug) console.log("'atxHeader' rule returned");
+						frontTokens = this.lineFrontCheck();
+					}
 				}
 				else {
 					this.eatFront(tempCheck);
@@ -632,7 +701,7 @@ function parser(inputArray) {
 					breakBlock = true;
 				else if (this.currentToken.type == "newline" || this.currentToken.type == "EOF")
 					breakBlock = true;
-				if (tempCheck.length > 0) {
+				if (tempCheck.length >= tokenStart + 1) {
 					if (tempCheck[tokenStart].name == "blockquote")
 						breakBlock = false;
 				}
@@ -671,6 +740,48 @@ function parser(inputArray) {
 		return node;
 	}
 
+	this.horizontalRule = function() {
+		if (globalDebug) console.log("'horizontalRule' rule called");
+		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
+			this.eat(this.currentToken.type);
+		}
+		if (this.currentToken.type == "newline")
+			this.eat("newline");
+		
+		return { type: "horizontalrule" };
+	}
+
+	this.atxHeader = function(frontTokens) {
+		if (globalDebug) console.log("'atxHeader' rule called");
+		frontInfo = this.eatFront(frontTokens);
+		var node = { type: "atxheader" + frontInfo.headerNumber, children: [] };
+		node.children.push(this.line());
+		if (globalDebug) console.log("'line' rule returned");
+
+		return node;
+	}
+
+	this.setextHeader = function() {
+		if (globalDebug) console.log("'setextHeader' rule called");
+		var childLine = this.line();
+		if (globalDebug) console.log("'line' rule returned");
+		if (this.currentToken.type == "=") {
+			var node = { type: "setext1", children: [childLine]}
+			while (this.currentToken.type == "=")
+				this.eat("=");
+		}
+		else if (this.currentToken.type == "-") {
+			var node = { type: "setext2", children: [childLine]}
+			while (this.currentToken.type == "-")
+				this.eat("-");
+		}
+
+		if (this.currentToken.type == "newline")
+			this.eat("newline");
+
+		return node;
+	}
+
 	// * Line Rules *
 	//
 	// Rules to parse different types of lines
@@ -679,7 +790,6 @@ function parser(inputArray) {
 		if (globalDebug) console.log("'line' rule called");
 		var checkRules = this.peekLine();
 		var node = { type: "line", children: [] };
-		console.log(checkRules);
 		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
 
 			if (this.position in checkRules) {
@@ -710,10 +820,6 @@ function parser(inputArray) {
 				else if (checkRules[this.position] == "inlineimage") {
 					node.children.push(this.inlineImage(checkRules));
 					if (globalDebug) console.log("'inlineImage' rule returned");
-				}
-				else if (checkRules[this.position] == "hrule") {
-					node.children.push(this.horizontalrule());
-					if (globalDebug) console.log("'horizontalrule' rule returned");
 				}
 			}
 			else {
@@ -813,10 +919,6 @@ function parser(inputArray) {
 					node.children.push(this.inlineImage(checkRules));
 					if (globalDebug) console.log("'inlineImage' rule returned");
 				}
-				else if (checkRules[this.position] == "hrule") {
-					node.children.push(this.horizontalrule());
-					if (globalDebug) console.log("'horizontalrule' rule returned");
-				}
 			}
 			else {
 				if (this.currentToken.type == "space")
@@ -878,14 +980,6 @@ function parser(inputArray) {
 			}
 		}
 		return node;
-	}
-
-	this.horizontalrule = function() {
-		if (globalDebug) console.log("'horizontalrule' rule called");
-		while (this.currentToken.type != "newline" && this.currentToken.type != "EOF") {
-			this.eat(this.currentToken.type);
-		}
-		return { type: "horizontalrule" };
 	}
 
 	this.inlineLink = function(checkRules) {

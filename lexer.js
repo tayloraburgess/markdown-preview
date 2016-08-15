@@ -6,6 +6,8 @@ function token(initType, initValue) {
 	this.type = initType;
 	if (initValue != null)
 		this.value = initValue;
+	else 
+		this.value = null;
 }
 
 function lexer(inputText) {
@@ -14,6 +16,15 @@ function lexer(inputText) {
 	this.currentChar = this.text[this.position];
 
 	this.digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+
+	this.hruleAsterisk = /(?:\s*\*\s*){3,}(?:$|\n)/;
+	this.hruleDash = /(?:\s*-\s*){3,}(?:$|\n)/;
+	this.hruleUnderscore = /(?:\s*_\s*){3,}(?:|\n)/;
+
+	this.atxHeader = /#{1,6}.+/
+
+	this.setextHeaderDash = /-+(?:$|\n)/;
+	this.setextHeaderEqual = /=+(?:$|\n)/;
 
 	this.error = function(invalid) {
 		throw "Invalid character: " + invalid;
@@ -62,20 +73,41 @@ function lexer(inputText) {
 				return new token("tab");
 			}
 			else if (this.currentChar == "=") {
+				if (this.text.substring(this.position).search(this.setextHeaderEqual) == 0) {
+					this.advance(1);
+					return new token("=", "setextheader");
+				}
 				this.advance(1);
 				return new token("=");
 			}
 			else if (this.currentChar == "-") {
+				if (this.text.substring(this.position).search(this.setextHeaderDash) == 0) {
+					this.advance(1);
+					return new token("-", "setextheader");
+				}
+				if (this.text.substring(this.position).search(this.hruleDash) == 0) {
+					this.advance(1);
+					return new token("-", "hrule");
+				}
 				this.advance(1);
 				return new token("-");
 			}
 			else if (this.currentChar == "_") {
+				if (this.text.substring(this.position).search(this.hruleUnderscore) == 0) {
+					this.advance(1);
+					return new token("_", "hrule");
+				}
 				this.advance(1);
 				return new token("_");
 			}
 			else if (this.currentChar == "#") {
+				if (this.text.substring(this.position).search(this.atxHeader) == 0) {
+					this.advance(1);
+					return new token("#", "atxheader");
+				}
 				this.advance(1);
 				return new token("#");
+
 			}
 			else if (this.currentChar == ">") {
 				this.advance(1);
@@ -86,6 +118,10 @@ function lexer(inputText) {
 				return new token("<");
 			}
 			else if (this.currentChar == "*") {
+				if (this.text.substring(this.position).search(this.hruleAsterisk) == 0) {
+					this.advance(1);
+					return new token("*", "hrule");
+				}
 				this.advance(1);
 				return new token("*");
 			}
@@ -163,6 +199,7 @@ function lexer(inputText) {
 			nextToken = this.getNextToken();
 			tokenArray.push(nextToken);
 		}
+		console.log(JSON.stringify(tokenArray, null, "	"));
 		return tokenArray;
 	}
 }
