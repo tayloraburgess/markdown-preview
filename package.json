@@ -1,0 +1,20 @@
+{
+  "name": "markdown-preview",
+  "version": "1.0.0",
+  "description": "Tool that interprets markdown > HTML.",
+  "main": "app.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tayloraburgess/markdown-preview.git"
+  },
+  "author": "Taylor Burgess",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tayloraburgess/markdown-preview/issues"
+  },
+  "homepage": "https://github.com/tayloraburgess/markdown-preview#readme"
+}
