@@ -5,6 +5,7 @@ var blockParser = parser1.blockParser;
 
 var helpers = require('../helpers');
 var randomLines = helpers.randomLines;
+var traverseAST = helpers.traverseAST;
 
 describe('blockParser()', function() {
 
@@ -32,7 +33,7 @@ describe('blockParser()', function() {
 			var line = testParser.getLine();
 			line.should.equal('\n');
 
-			var testParser = new blockParser('');
+			testParser = new blockParser('');
 			testParser.getLine();
 			line.should.equal('\n');
 		});
@@ -41,7 +42,10 @@ describe('blockParser()', function() {
 
 	describe('parseBlocks()', function() {
 
-		it('should return a structured AST');
+		it('should return a structured AST'/*, function() {
+			var testParser = new blockParser(randomLines());
+			var testAST = testParser.parseBlocks();
+		}*/);
 	});
 });
 
@@ -55,5 +59,24 @@ describe('randomLines()', function() {
 	it('should return a string of the length passed to the parameters', function() {
 		var length = randomLines(100).length;
 		length.should.equal(100);
+	});
+});
+
+describe('traverseAST()', function() {
+
+	it('should perform the provide callback on each AST node', function() {
+		var testAST = { type: 'node1', child:
+			{ type: 'node2', children: [
+				{ type: 'node3'},
+				{ type: 'node4'}
+			]}
+		};
+
+		var counter = 0;
+		traverseAST(testAST, function() {
+			counter++;
+		});
+
+		counter.should.equal(4);
 	});
 });

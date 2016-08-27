@@ -18,7 +18,7 @@ function blockParser(input) {
 			}
 			return returnLine;
 		}
-	}
+	};
 
 	this.parseBlocks = function() {
 		var AST = { type: 'document', children: [] } ,
@@ -29,7 +29,7 @@ function blockParser(input) {
 		}
 
 		return AST;
-	}
+	};
 }
 
 module.exports = {
