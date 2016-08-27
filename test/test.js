@@ -35,4 +35,8 @@ describe('blockParser()', function() {
 		});
 
 	});
+
+	describe('parseBlocks()', function() {
+		it('should return a structured AST');
+	});
 });

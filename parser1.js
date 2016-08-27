@@ -19,6 +19,17 @@ function blockParser(input) {
 			return returnLine;
 		}
 	}
+
+	this.parseBlocks = function() {
+		var AST = { type: 'document', children: [] } ,
+		var line;
+
+		while (line = this.getLine() !== '\n') {
+			AST.children.push({ type: 'paragraph', child: line });
+		}
+
+		return AST;
+	}
 }
 
 module.exports = {
