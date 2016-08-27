@@ -22,10 +22,11 @@ function blockParser(input) {
 
 	this.parseBlocks = function() {
 		var AST = { type: 'document', children: [] } ,
-			line;
+			line = this.getLine();
 
-		while (line = this.getLine() !== '\n') {
-			AST.children.push({ type: 'paragraph', child: line });
+		while (line !== '\n') {
+			AST.children.push({ type: 'paragraph', lines: line });
+			line = this.getLine();
 		}
 
 		return AST;

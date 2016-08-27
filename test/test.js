@@ -42,10 +42,36 @@ describe('blockParser()', function() {
 
 	describe('parseBlocks()', function() {
 
-		it('should return a structured AST'/*, function() {
-			var testParser = new blockParser(randomLines());
+		it('should return a CommonMark-compliant AST', function() {
+			var testParser = new blockParser(randomLines(200));
 			var testAST = testParser.parseBlocks();
-		}*/);
+
+			var conditions = true;
+
+			traverseAST(testAST, function() {
+				if (!('type' in testAST)) {
+					conditions = false;
+				}
+
+				if (!('child' in testAST) && !('children' in testAST)) {
+					if (!('lines' in testAST)) {
+						conditions = false;
+					}
+					else if (testAST.lines.length === 0) {
+						conditions = false;
+					}
+					else {
+						for (var i = 0; i < testAST.lines.length; i++) {
+							if (typeof testAST.lines[i] !== 'string') {
+								conditions = false;
+							}
+						}
+					}
+				}
+			});
+
+			conditions.should.equal(true);
+		});
 	});
 });
 
