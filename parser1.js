@@ -22,7 +22,7 @@ function blockParser(input) {
 
 	this.parseBlocks = function() {
 		var AST = { type: 'document', children: [] } ,
-		var line;
+			line;
 
 		while (line = this.getLine() !== '\n') {
 			AST.children.push({ type: 'paragraph', child: line });

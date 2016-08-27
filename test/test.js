@@ -3,6 +3,9 @@ var should = require('chai').should();
 var parser1 = require('../parser1');
 var blockParser = parser1.blockParser;
 
+var helpers = require('../helpers');
+var randomLines = helpers.randomLines;
+
 describe('blockParser()', function() {
 
 	describe('getLine()', function() {
@@ -37,6 +40,20 @@ describe('blockParser()', function() {
 	});
 
 	describe('parseBlocks()', function() {
+
 		it('should return a structured AST');
+	});
+});
+
+describe('randomLines()', function() {
+
+	it('should return a string', function() {
+		var lines = randomLines();
+		lines.should.be.a('string');
+	});
+
+	it('should return a string of the length passed to the parameters', function() {
+		var length = randomLines(100).length;
+		length.should.equal(100);
 	});
 });
