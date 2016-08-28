@@ -1,3 +1,6 @@
+var helpers = require('./helpers');
+var traverseAST = helpers.traverseAST;
+
 function blockParser(input) {
 	this.inputList = input.split('');
 
@@ -20,8 +23,35 @@ function blockParser(input) {
 		}
 	};
 
+	this.findOpenChild = function(AST) {
+		var node;
+
+		if (AST.open == true) {
+			if ('child' in AST) {
+				if (AST.child === null) {
+					return AST;
+				}
+				else {
+					node = this.findOpenChild(AST.child);
+				}
+			}
+			else if ('children' in AST) {
+				if (AST.children.length === 0) {
+					return AST;
+				}
+				else {
+					for (var i = 0; i < AST.children.length; i++) {
+						node = this.findOpenChild(AST.children[i]);
+					}
+				}
+			}
+		}
+
+		return node;
+	};
+
 	this.parseBlocks = function() {
-		var AST = { type: 'document', children: [] } ,
+		var AST = { type: 'document', open: true, children: [] } ,
 			line = this.getLine();
 
 		while (line !== '\n') {

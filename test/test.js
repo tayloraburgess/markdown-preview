@@ -78,6 +78,24 @@ describe ('parser1.js', function(){
 
 		});
 
+		describe('findOpenChild()', function() {
+			it('should return the last open block in a parser-generated AST', function() {
+				var checkNode =  { type: 'node5', open: true, child: null },
+					testAST = { type: 'node1', open: true, children: [
+					{ type: 'node2', open: false, children: [
+						{ type: 'node3', open: false},
+						{ type: 'node4', open: false}
+					]} ,
+					checkNode
+				]},
+					testParser = new blockParser('');
+
+				checkNode = testParser.findOpenChild(testAST);
+				checkNode.should.equal(checkNode);
+
+			});
+		});
+
 		describe('parseBlocks()', function() {
 
 			it('should return a CommonMark-compliant AST', function() {
