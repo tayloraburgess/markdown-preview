@@ -1,6 +1,15 @@
 var helpers = require('./helpers');
 var traverseAST = helpers.traverseAST;
 
+function checkBlankLine(lineArray) {
+	for (var i = 0; i < lineArray.length; i++) {
+		if (lineArray[i] !== ' ' && lineArray[i] !== '\t') {
+			return false;
+		}
+	}
+	return true;
+};
+
 function blockParser(input) {
 	this.inputList = input.split('');
 
@@ -26,22 +35,24 @@ function blockParser(input) {
 	this.findOpenChild = function(AST) {
 		var node;
 
-		if (AST.open == true) {
-			if ('child' in AST) {
-				if (AST.child === null) {
-					return AST;
+		if ('open' in AST) {
+			if (AST.open === true) {
+				if ('child' in AST) {
+					if (AST.child === null) {
+						return AST;
+					}
+					else {
+						node = this.findOpenChild(AST.child);
+					}
 				}
-				else {
-					node = this.findOpenChild(AST.child);
-				}
-			}
-			else if ('children' in AST) {
-				if (AST.children.length === 0) {
-					return AST;
-				}
-				else {
-					for (var i = 0; i < AST.children.length; i++) {
-						node = this.findOpenChild(AST.children[i]);
+				else if ('children' in AST) {
+					if (AST.children.length === 0) {
+						return AST;
+					}
+					else {
+						for (var i = 0; i < AST.children.length; i++) {
+							node = this.findOpenChild(AST.children[i]);
+						}
 					}
 				}
 			}
@@ -57,24 +68,49 @@ function blockParser(input) {
 			}
 		}
 		return true;
-	}
+	};
 
 	this.parseBlocks = function() {
 		var AST = { type: 'document', open: true, children: [] },
 			line = this.getLine().split(''),
-			unmatchedBlocks = [];
+			unmatchedBlocks = [],
+			lastOpenBlock,
+			traverseCallback;
 
-		while (line !== '\n') {
-			traverseAST(AST, function() {
-				if (AST.open === true) {
-					if (AST.type === 'paragraph' && checkBlankLine(line) === true) {
-						unmatchedBlocks.push(AST);
+		traverseCallback = function(node) {
+			if ('open' in node) {
+				if (node.open === true) {
+					if (node.type === 'paragraph' && checkBlankLine(line) === true) {
+						unmatchedBlocks.push(node);
 					}
 				}
-			});
+			}
+		};
 
-			for (var i = 0; i < length.unmatchedBlocks; i++) {
+		while (line !== '\n') {
+			traverseAST(AST, traverseCallback);
+
+			for (var i = 0; i < unmatchedBlocks.length; i++) {
 				unmatchedBlocks[i].open = false;
+			}
+
+			lastOpenBlock = this.findOpenChild(AST);
+
+			if (lastOpenBlock === undefined) {
+				break;
+			}
+
+			if (lastOpenBlock.type === 'document') {
+				var newParagraph = { type: 'paragraph', open: true, children: [] };
+				lastOpenBlock.children.push(newParagraph);
+				lastOpenBlock = newParagraph;
+			}
+
+			if ('children' in lastOpenBlock) {
+				lastOpenBlock.children.push({ type: 'line', text: line.join('') });
+			}
+			else if ('child' in lastOpenBlock) {
+				lastOpenBlock.child = { type: 'line', text: line.join('') };
 			}
 
 			line = this.getLine().split('');

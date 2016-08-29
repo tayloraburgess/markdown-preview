@@ -117,26 +117,21 @@ describe ('parser1.js', function(){
 				var testParser = new blockParser(randomLines(200));
 				var testAST = testParser.parseBlocks();
 
+				console.log(JSON.stringify(testAST, null, "   "));
+
 				var conditions = true;
 
-				traverseAST(testAST, function() {
-					if (!('type' in testAST)) {
+				traverseAST(testAST, function(node) {
+					if (!('type' in node)) {
 						conditions = false;
 					}
 
-					if (!('child' in testAST) && !('children' in testAST)) {
-						if (!('lines' in testAST)) {
+					if (!('child' in node) && !('children' in node)) {
+						if (!('text' in node)) {
 							conditions = false;
 						}
-						else if (testAST.lines.length === 0) {
+						else if (typeof node.text !== 'string') {
 							conditions = false;
-						}
-						else {
-							for (var i = 0; i < testAST.lines.length; i++) {
-								if (typeof testAST.lines[i] !== 'string') {
-									conditions = false;
-								}
-							}
 						}
 					}
 				});
