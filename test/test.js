@@ -2,6 +2,7 @@ var should = require('chai').should();
 
 var parser1 = require('../parser1');
 var blockParser = parser1.blockParser;
+var checkBlankLine = parser1.checkBlankLine;
 
 var helpers = require('../helpers');
 var randomLines = helpers.randomLines;
@@ -43,7 +44,20 @@ describe('helpers.js', function() {
 
 });
 
-describe ('parser1.js', function(){
+describe ('parser1.js', function() {
+
+	describe('checkBlankLine()', function() {
+		it('should return true when the input character array contains only spaces and tabs', function() {
+			var testString = '   		  		 ';
+			var isBlank = checkBlankLine(testString.split(''));
+			isBlank.should.equal(true);
+		});
+		it('should return false when the input character array contains other characters', function() {
+			var testString = '   d		 jsdf 	foo	 ';
+			var isBlank = checkBlankLine(testString.split(''));
+			isBlank.should.equal(false);
+		});
+	});
 
 	describe('blockParser()', function() {
 
@@ -76,21 +90,6 @@ describe ('parser1.js', function(){
 				line.should.equal('\n');
 			});
 
-		});
-
-		describe('checkBlankLine()', function() {
-			it('should return true when the input character array contains only spaces and tabs', function() {
-				var testParser = new blockParser('');
-				var testString = '   		  		 ';
-				var isBlank = testParser.checkBlankLine(testString.split(''));
-				isBlank.should.equal(true);
-			});
-			it('should return false when the input character array contains other characters', function() {
-				var testParser = new blockParser('');
-				var testString = '   d		 jsdf 	foo	 ';
-				var isBlank = testParser.checkBlankLine(testString.split(''));
-				isBlank.should.equal(false);
-			});
 		});
 
 		describe('findOpenChild()', function() {

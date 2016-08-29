@@ -53,15 +53,6 @@ function blockParser(input) {
 		return node;
 	};
 
-	this.checkBlankLine = function(lineArray) {
-		for (var i = 0; i < lineArray.length; i++) {
-			if (lineArray[i] !== ' ' && lineArray[i] !== '\t') {
-				return false;
-			}
-		}
-		return true;
-	};
-
 	this.parseBlocks = function() {
 		var AST = { type: 'document', open: true, children: [] },
 			line = this.getLine().split(''),
@@ -108,6 +99,7 @@ function blockParser(input) {
 }
 
 module.exports = {
-	blockParser: blockParser
+	blockParser: blockParser,
+	checkBlankLine: checkBlankLine
 };
 
