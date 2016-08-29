@@ -37,15 +37,7 @@ function blockParser(input) {
 
 		if ('open' in AST) {
 			if (AST.open === true) {
-				if ('child' in AST) {
-					if (AST.child === null) {
-						return AST;
-					}
-					else {
-						node = this.findOpenChild(AST.child);
-					}
-				}
-				else if ('children' in AST) {
+				if ('children' in AST) {
 					if (AST.children.length === 0) {
 						return AST;
 					}
@@ -106,12 +98,7 @@ function blockParser(input) {
 				lastOpenBlock = newParagraph;
 			}
 
-			if ('children' in lastOpenBlock) {
-				lastOpenBlock.children.push({ type: 'line', text: line.join('') });
-			}
-			else if ('child' in lastOpenBlock) {
-				lastOpenBlock.child = { type: 'line', text: line.join('') };
-			}
+			lastOpenBlock.children.push({ type: 'line', text: line.join('') });
 
 			line = this.getLine().split('');
 		}

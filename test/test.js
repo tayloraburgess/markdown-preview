@@ -25,12 +25,12 @@ describe('helpers.js', function() {
 	describe('traverseAST()', function() {
 
 		it('should perform the provided callback on each AST node', function() {
-			var testAST = { type: 'node1', child:
+			var testAST = { type: 'node1', children: [
 				{ type: 'node2', children: [
 					{ type: 'node3'},
 					{ type: 'node4'}
 				]}
-			};
+			]};
 
 			var counter = 0;
 			traverseAST(testAST, function() {
@@ -95,7 +95,7 @@ describe ('parser1.js', function(){
 
 		describe('findOpenChild()', function() {
 			it('should return the last open block in a parser-generated AST', function() {
-				var checkNode =  { type: 'node5', open: true, child: null },
+				var checkNode =  { type: 'node5', open: true, children: [] },
 					testAST = { type: 'node1', open: true, children: [
 					{ type: 'node2', open: false, children: [
 						{ type: 'node3', open: false},
@@ -126,7 +126,7 @@ describe ('parser1.js', function(){
 						conditions = false;
 					}
 
-					if (!('child' in node) && !('children' in node)) {
+					if (!('children' in node)) {
 						if (!('text' in node)) {
 							conditions = false;
 						}
