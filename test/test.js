@@ -24,7 +24,7 @@ describe('helpers.js', function() {
 
 	describe('traverseAST()', function() {
 
-		it('should perform the provide callback on each AST node', function() {
+		it('should perform the provided callback on each AST node', function() {
 			var testAST = { type: 'node1', child:
 				{ type: 'node2', children: [
 					{ type: 'node3'},
@@ -76,6 +76,21 @@ describe ('parser1.js', function(){
 				line.should.equal('\n');
 			});
 
+		});
+
+		describe('checkBlankLine()', function() {
+			it('should return true when the input character array contains only spaces and tabs', function() {
+				var testParser = new blockParser('');
+				var testString = '   		  		 ';
+				var isBlank = testParser.checkBlankLine(testString.split(''));
+				isBlank.should.equal(true);
+			});
+			it('should return false when the input character array contains other characters', function() {
+				var testParser = new blockParser('');
+				var testString = '   d		 jsdf 	foo	 ';
+				var isBlank = testParser.checkBlankLine(testString.split(''));
+				isBlank.should.equal(false);
+			});
 		});
 
 		describe('findOpenChild()', function() {

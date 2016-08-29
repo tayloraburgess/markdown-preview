@@ -50,13 +50,34 @@ function blockParser(input) {
 		return node;
 	};
 
+	this.checkBlankLine = function(lineArray) {
+		for (var i = 0; i < lineArray.length; i++) {
+			if (lineArray[i] !== ' ' && lineArray[i] !== '\t') {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	this.parseBlocks = function() {
-		var AST = { type: 'document', open: true, children: [] } ,
-			line = this.getLine();
+		var AST = { type: 'document', open: true, children: [] },
+			line = this.getLine().split(''),
+			unmatchedBlocks = [];
 
 		while (line !== '\n') {
-			AST.children.push({ type: 'paragraph', lines: line });
-			line = this.getLine();
+			traverseAST(AST, function() {
+				if (AST.open === true) {
+					if (AST.type === 'paragraph' && checkBlankLine(line) === true) {
+						unmatchedBlocks.push(AST);
+					}
+				}
+			});
+
+			for (var i = 0; i < length.unmatchedBlocks; i++) {
+				unmatchedBlocks[i].open = false;
+			}
+
+			line = this.getLine().split('');
 		}
 
 		return AST;
