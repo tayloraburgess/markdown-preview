@@ -1,105 +1,99 @@
-var helpers = require('./helpers');
-var traverseAST = helpers.traverseAST;
+/* eslint-env node */
+
+import { traverseAST } from './helpers';
 
 function checkBlankLine(lineArray) {
-	for (var i = 0; i < lineArray.length; i++) {
-		if (lineArray[i] !== ' ' && lineArray[i] !== '\t') {
-			return false;
-		}
-	}
-	return true;
-};
+  for (let i = 0; i < lineArray.length; i++) {
+    if (lineArray[i] !== ' ' && lineArray[i] !== '\t') {
+      return false;
+    }
+  }
+  return true;
+}
 
-function blockParser(input) {
-	this.inputList = input.split('');
+function BlockParser(input) {
+  this.inputList = input.split('');
 
-	this.getLine = function() {
-		if (this.inputList.length === 0) {
-			return '\n';
-		}
-		else {
-			var returnLine = '';
-			while (this.inputList[0] !== '\n') {
-				returnLine += this.inputList.shift();
-				if (this.inputList.length === 0) {
-					break;
-				}
-			}
-			if (this.inputList.length !== 0) {
-				this.inputList.shift();
-			}
-			return returnLine;
-		}
-	};
+  this.getLine = () => {
+    if (this.inputList.length !== 0) {
+      let returnLine = '';
+      while (this.inputList[0] !== '\n') {
+        returnLine += this.inputList.shift();
+        if (this.inputList.length === 0) {
+          break;
+        }
+      }
+      if (this.inputList.length !== 0) {
+        this.inputList.shift();
+      }
+      return returnLine;
+    }
+    return '\n';
+  };
 
-	this.findOpenChild = function(AST) {
-		var node;
+  this.findOpenChild = (AST) => {
+    let node;
 
-		if ('open' in AST) {
-			if (AST.open === true) {
-				if ('children' in AST) {
-					if (AST.children.length === 0) {
-						return AST;
-					}
-					else {
-						for (var i = 0; i < AST.children.length; i++) {
-							node = this.findOpenChild(AST.children[i]);
-						}
-					}
-				}
-			}
-		}
+    if ('open' in AST) {
+      if (AST.open === true && 'children' in AST) {
+        for (let i = 0; i < AST.children.length; i++) {
+          node = this.findOpenChild(AST.children[i]);
+        }
+        if (AST.children.length === 0) {
+          return AST;
+        }
+      }
+    }
 
-		return node;
-	};
+    return node;
+  };
 
-	this.parseBlocks = function() {
-		var AST = { type: 'document', open: true, children: [] },
-			line = this.getLine().split(''),
-			unmatchedBlocks = [],
-			lastOpenBlock,
-			traverseCallback;
+  this.parseBlocks = () => {
+    const AST = { type: 'document', open: true, children: [] };
+    const unmatchedBlocks = [];
+    let line = this.getLine().split('');
+    let lastOpenBlock;
 
-		traverseCallback = function(node) {
-			if ('open' in node) {
-				if (node.open === true) {
-					if (node.type === 'paragraph' && checkBlankLine(line) === true) {
-						unmatchedBlocks.push(node);
-					}
-				}
-			}
-		};
+    const traverseCallback = (node) => {
+      if ('open' in node) {
+        if (node.open === true) {
+          if (node.type === 'paragraph' && checkBlankLine(line) === true) {
+            unmatchedBlocks.push(node);
+          }
+        }
+      }
+    };
 
-		while (line !== '\n') {
-			traverseAST(AST, traverseCallback);
+    while (line !== '\n') {
+      traverseAST(AST, traverseCallback);
 
-			for (var i = 0; i < unmatchedBlocks.length; i++) {
-				unmatchedBlocks[i].open = false;
-			}
+      for (let i = 0; i < unmatchedBlocks.length; i++) {
+        unmatchedBlocks[i].open = false;
+      }
 
-			lastOpenBlock = this.findOpenChild(AST);
+      lastOpenBlock = this.findOpenChild(AST);
 
-			if (lastOpenBlock === undefined) {
-				break;
-			}
+      if (lastOpenBlock === undefined) {
+        break;
+      }
 
-			if (lastOpenBlock.type === 'document') {
-				var newParagraph = { type: 'paragraph', open: true, children: [] };
-				lastOpenBlock.children.push(newParagraph);
-				lastOpenBlock = newParagraph;
-			}
+      if (lastOpenBlock.type === 'document') {
+        const newParagraph = { type: 'paragraph', open: true, children: [] };
+        lastOpenBlock.children.push(newParagraph);
+        lastOpenBlock = newParagraph;
+      }
 
-			lastOpenBlock.children.push({ type: 'line', text: line.join('') });
+      lastOpenBlock.children.push({ type: 'line', text: line.join('') });
 
-			line = this.getLine().split('');
-		}
+      line = this.getLine().split('');
+    }
 
-		return AST;
-	};
+    return AST;
+  };
 }
 
 module.exports = {
-	blockParser: blockParser,
-	checkBlankLine: checkBlankLine
+  BlockParser,
+  checkBlankLine,
 };
 
