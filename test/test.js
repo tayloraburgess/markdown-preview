@@ -1,7 +1,7 @@
 /* eslint-env node, mocha */
 
 import { should } from 'chai';
-import { BlockParser, checkBlankLine } from '../parser1';
+import BlockParser from '../parser1';
 import { randomLines, traverseAST } from '../helpers';
 
 should();
@@ -47,14 +47,14 @@ describe('helpers.js', () => {
 describe('parser1.js', () => {
   describe('checkBlankLine()', () => {
     it('should return true when the input character array contains only spaces and tabs', () => {
-      const testString = '    \t    ';
-      const isBlank = checkBlankLine(testString.split(''));
+      const testParser = new BlockParser('    \t    ');
+      const isBlank = testParser.checkBlankLine(testParser.getLine().split(''));
       isBlank.should.equal(true);
     });
 
     it('should return false when the input character array contains other characters', () => {
-      const testString = '   d     jsdf   foo  ';
-      const isBlank = checkBlankLine(testString.split(''));
+      const testParser = new BlockParser('   d     jsdf   foo  ');
+      const isBlank = testParser.checkBlankLine(testParser.getLine().split(''));
       isBlank.should.equal(false);
     });
   });

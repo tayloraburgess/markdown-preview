@@ -2,13 +2,7 @@
 
 import { traverseAST } from './helpers';
 
-export function checkBlankLine(lineArray) {
-  return lineArray.every((element) => {
-    return element === ' ' || element === '\t';
-  });
-}
-
-export class BlockParser {
+class BlockParser {
   constructor(input) {
     this.inputList = input.split('');
   }
@@ -28,6 +22,15 @@ export class BlockParser {
       return returnLine;
     }
     return '\n';
+  }
+
+  checkBlankLine(lineArray) {
+    if (Array.isArray(lineArray)) {
+      return lineArray.every((element) => {
+        return element === ' ' || element === '\t';
+      });
+    }
+    return null;
   }
 
   findOpenChild(AST) {
@@ -55,7 +58,7 @@ export class BlockParser {
     const traverseCallback = (node) => {
       if ('open' in node) {
         if (node.open === true) {
-          if (node.type === 'paragraph' && checkBlankLine(line) === true) {
+          if (node.type === 'paragraph' && this.checkBlankLine(line) === true) {
             unmatchedBlocks.push(node);
           }
         }
@@ -89,3 +92,5 @@ export class BlockParser {
     return AST;
   }
 }
+
+export default BlockParser;
