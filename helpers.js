@@ -1,34 +1,21 @@
 /* eslint-env node */
 
-function randomLines(stringLength = 75) {
-  let returnString = '';
+export function randomLines(stringLength = 75) {
   const possible = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\n\t !"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~';
 
-  for (let i = 0; i < stringLength; i++) {
-    returnString += possible.charAt(Math.random() * (possible.length - 1));
-  }
-  return returnString;
+  return Array(stringLength).fill('').map(() => {
+    return possible.charAt(Math.random() * (possible.length - 1));
+  }).join('');
 }
 
-function traverseAST(AST, callback) {
+export function traverseAST(AST, callback) {
   if (typeof callback === 'function') {
     callback(AST);
   }
 
-  if ('child' in AST) {
-    if (AST.child !== null) {
-      traverseAST(AST.child, callback);
-    }
-  } else if ('children' in AST) {
-    if (AST.children.length !== 0) {
-      for (let i = 0; i < AST.children.length; i++) {
-        traverseAST(AST.children[i], callback);
-      }
+  if ('children' in AST) {
+    if (AST.children.length) {
+      AST.children.forEach((element) => traverseAST(element, callback));
     }
   }
 }
-
-module.exports = {
-  randomLines,
-  traverseAST,
-};

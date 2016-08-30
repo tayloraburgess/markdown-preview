@@ -2,16 +2,13 @@
 
 import { traverseAST } from './helpers';
 
-function checkBlankLine(lineArray) {
-  for (let i = 0; i < lineArray.length; i++) {
-    if (lineArray[i] !== ' ' && lineArray[i] !== '\t') {
-      return false;
-    }
-  }
-  return true;
+export function checkBlankLine(lineArray) {
+  return lineArray.every((element) => {
+    return element === ' ' || element === '\t';
+  });
 }
 
-function BlockParser(input) {
+export function BlockParser(input) {
   this.inputList = input.split('');
 
   this.getLine = () => {
@@ -33,18 +30,17 @@ function BlockParser(input) {
 
   this.findOpenChild = (AST) => {
     let node;
-
     if ('open' in AST) {
       if (AST.open === true && 'children' in AST) {
-        for (let i = 0; i < AST.children.length; i++) {
-          node = this.findOpenChild(AST.children[i]);
-        }
         if (AST.children.length === 0) {
           return AST;
         }
+
+        for (let i = 0; i < AST.children.length; i++) {
+          node = this.findOpenChild(AST.children[i]);
+        }
       }
     }
-
     return node;
   };
 
@@ -67,9 +63,9 @@ function BlockParser(input) {
     while (line !== '\n') {
       traverseAST(AST, traverseCallback);
 
-      for (let i = 0; i < unmatchedBlocks.length; i++) {
-        unmatchedBlocks[i].open = false;
-      }
+      unmatchedBlocks.forEach((element) => {
+        element.open = false;
+      });
 
       lastOpenBlock = this.findOpenChild(AST);
 
@@ -91,9 +87,3 @@ function BlockParser(input) {
     return AST;
   };
 }
-
-module.exports = {
-  BlockParser,
-  checkBlankLine,
-};
-

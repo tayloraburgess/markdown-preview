@@ -47,7 +47,7 @@ describe('helpers.js', () => {
 describe('parser1.js', () => {
   describe('checkBlankLine()', () => {
     it('should return true when the input character array contains only spaces and tabs', () => {
-      const testString = '             ';
+      const testString = '    \t    ';
       const isBlank = checkBlankLine(testString.split(''));
       isBlank.should.equal(true);
     });
