@@ -8,10 +8,12 @@ export function checkBlankLine(lineArray) {
   });
 }
 
-export function BlockParser(input) {
-  this.inputList = input.split('');
+export class BlockParser {
+  constructor(input) {
+    this.inputList = input.split('');
+  }
 
-  this.getLine = () => {
+  getLine() {
     if (this.inputList.length !== 0) {
       let returnLine = '';
       while (this.inputList[0] !== '\n') {
@@ -26,9 +28,9 @@ export function BlockParser(input) {
       return returnLine;
     }
     return '\n';
-  };
+  }
 
-  this.findOpenChild = (AST) => {
+  findOpenChild(AST) {
     let node;
     if ('open' in AST) {
       if (AST.open === true && 'children' in AST) {
@@ -42,9 +44,9 @@ export function BlockParser(input) {
       }
     }
     return node;
-  };
+  }
 
-  this.parseBlocks = () => {
+  parseBlocks() {
     const AST = { type: 'document', open: true, children: [] };
     const unmatchedBlocks = [];
     let line = this.getLine().split('');
@@ -85,5 +87,5 @@ export function BlockParser(input) {
     }
 
     return AST;
-  };
+  }
 }
